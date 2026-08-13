@@ -29,7 +29,8 @@ let hyperdrive = false;
 // Game State
 let isCrashed = false;
 let score = 0;
-let shipDepth = 90; // Default distance inside tunnel from camera
+// Change default ship depth from 90 to 250 (moves ship deeper into tunnel)
+let shipDepth = 250; // Default distance inside tunnel from camera
 
 // Input & Controls State
 const keys = {};
