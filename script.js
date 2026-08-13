@@ -410,7 +410,8 @@ window.addEventListener('keyup', (e) => {
 function handleShipInput(dt) {
     if (isCrashed) return { speed: 0, dx: 0, dy: 0 };
 
-    const steerSpeed = 420 * dt;
+    // Halved steering speed (was 420 * dt)
+    const steerSpeed = 210 * dt;
     let dx = 0;
     let dy = 0;
 
