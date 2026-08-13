@@ -1,0 +1,201 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #030108;
+    font-family: 'Courier New', Courier, monospace;
+    color: #00ffcc;
+}
+
+/* Three.js Canvas Container */
+#canvas-container {
+    width: 100vw;
+    height: 100vh;
+    display: block;
+}
+
+/* Retro CRT Scanlines Effect */
+.crt-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 10;
+    background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%, 
+        rgba(0, 0, 0, 0.35) 50%
+    ), linear-gradient(
+        90deg,
+        rgba(255, 0, 0, 0.03),
+        rgba(0, 255, 0, 0.01),
+        rgba(0, 0, 255, 0.03)
+    );
+    background-size: 100% 4px, 6px 100%;
+}
+
+/* CRT Screen Vignette Edge Shadow */
+.vignette {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 11;
+    box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.85);
+    transition: background-color 0.2s ease;
+}
+
+.vignette.red-flash {
+    background-color: rgba(255, 0, 0, 0.35);
+}
+
+/* Demoscene HUD */
+#hud {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 20;
+    background: rgba(5, 5, 16, 0.82);
+    border: 1px solid #00ffcc;
+    box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
+    padding: 15px;
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
+    transition: opacity 0.3s ease;
+    width: 310px;
+}
+
+.hud-title {
+    font-size: 13px;
+    font-weight: bold;
+    color: #ff007f;
+    text-shadow: 0 0 8px #ff007f;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+}
+
+.hud-stats {
+    font-size: 12px;
+    line-height: 1.6;
+    color: #00ffcc;
+    text-shadow: 0 0 5px #00ffcc;
+    margin-bottom: 12px;
+}
+
+.status-alive {
+    color: #00ffcc;
+    font-weight: bold;
+}
+
+.status-crashed {
+    color: #ff0055;
+    font-weight: bold;
+    animation: blink 0.5s infinite alternate;
+}
+
+/* Depth Slider Styling */
+.hud-slider-group {
+    margin-bottom: 12px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(0, 255, 204, 0.3);
+}
+
+.hud-slider-group label {
+    display: block;
+    font-size: 10px;
+    color: #ffcc00;
+    margin-bottom: 6px;
+    text-shadow: 0 0 4px #ffcc00;
+}
+
+.hud-slider-group input[type=range] {
+    width: 100%;
+    accent-color: #ff007f;
+    cursor: pointer;
+}
+
+.hud-controls {
+    border-top: 1px dashed rgba(0, 255, 204, 0.3);
+    padding-top: 8px;
+    font-size: 10px;
+    color: #ffcc00;
+    text-shadow: 0 0 4px #ffcc00;
+}
+
+.hud-controls p {
+    margin: 3px 0;
+}
+
+/* Crash Banner Overlay */
+#crash-overlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 30;
+    text-align: center;
+    background: rgba(10, 0, 5, 0.9);
+    border: 2px solid #ff0055;
+    box-shadow: 0 0 30px #ff0055;
+    padding: 30px 50px;
+    border-radius: 8px;
+}
+
+.crash-title {
+    font-size: 32px;
+    font-weight: bold;
+    color: #ff0055;
+    text-shadow: 0 0 15px #ff0055;
+    margin-bottom: 8px;
+    letter-spacing: 2px;
+    animation: blink 0.4s infinite alternate;
+}
+
+.crash-subtitle {
+    font-size: 14px;
+    color: #ffcc00;
+    margin-bottom: 15px;
+    letter-spacing: 1px;
+}
+
+.crash-score {
+    font-size: 18px;
+    color: #00ffcc;
+    margin-bottom: 20px;
+}
+
+.crash-prompt {
+    font-size: 12px;
+    color: #ffffff;
+    background: #ff0055;
+    padding: 8px 16px;
+    display: inline-block;
+    border-radius: 4px;
+    font-weight: bold;
+    text-shadow: none;
+    animation: pulse 1s infinite alternate;
+}
+
+.hidden {
+    display: none !important;
+}
+
+@keyframes blink {
+    0% { opacity: 1; }
+    100% { opacity: 0.3; }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.08); }
+}

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Demoscene 3D Tunnel - Spaceship Dodge</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <!-- Container for Three.js WebGL Canvas -->
+    <div id="canvas-container"></div>
+
+    <!-- Retro CRT Overlay -->
+    <div class="crt-overlay"></div>
+    <div class="vignette"></div>
+
+    <!-- HUD Overlay -->
+    <div id="hud">
+        <div class="hud-title">SYS // DEMO_TUNNEL_RUNNER.EXE</div>
+        <div class="hud-stats">
+            <div>STATUS: <span id="statusVal" class="status-alive">SURVIVING</span></div>
+            <div>SCORE: <span id="scoreVal">0</span></div>
+            <div>FPS: <span id="fps">60</span></div>
+            <div>SPEED: <span id="speedVal">100</span> KM/H</div>
+            <div>PALETTE: <span id="paletteName">NEON CYBER</span></div>
+        </div>
+
+        <div class="hud-slider-group">
+            <label for="depthSlider">SHIP DEPTH (Z-DISTANCE):</label>
+            <input type="range" id="depthSlider" min="30" max="350" value="90">
+        </div>
+
+        <div class="hud-controls">
+            <p><strong>[W/A/S/D]</strong> or <strong>[ARROWS]</strong> Steer Ship</p>
+            <p><strong>[SPACE]</strong> Hyperdrive | <strong>[C]</strong> Change Palette</p>
+            <p><strong>[R]</strong> Restart | <strong>[H]</strong> Toggle HUD</p>
+        </div>
+    </div>
+
+    <!-- Crash / Game Over Overlay -->
+    <div id="crash-overlay" class="hidden">
+        <div class="crash-title">SYSTEM CRASH!</div>
+        <div class="crash-subtitle">COLLISION DETECTED</div>
+        <div class="crash-score">FINAL SCORE: <span id="finalScore">0</span></div>
+        <div class="crash-prompt">PRESS [R] TO RESTART</div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
