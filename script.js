@@ -26,11 +26,13 @@ let currentPaletteIdx = 0;
 let speedMultiplier = 1.0;
 let hyperdrive = false;
 
-// Game State
+// Game & Health State
+let easyMode = true;        // Easy mode enabled by default
+let playerHealth = 100;     // Max HP = 100
+let invulnerableTimer = 0;  // Immunity cooldown on hit
 let isCrashed = false;
 let score = 0;
-// Change default ship depth from 90 to 250 (moves ship deeper into tunnel)
-let shipDepth = 250; // Default distance inside tunnel from camera
+let shipDepth = 250;        // Default distance inside tunnel from camera
 
 // Input & Controls State
 const keys = {};
@@ -86,12 +88,13 @@ function getTunnelCenter(z, t) {
 // -------------------------------------------------------------
 class PlayerShip {
     constructor() {
-        this.size = 22;
+        this.baseSize = 22;
+        this.size = this.baseSize;
         this.group = new THREE.Group();
 
         // Ship Low-Poly Wireframe Geometry (Nose pointing along -Z)
-        const shipGeo = new THREE.ConeGeometry(this.size * 0.8, this.size * 2.2, 4);
-        shipGeo.rotateX(-Math.PI / 2); // Point apex down the tunnel (-Z)
+        const shipGeo = new THREE.ConeGeometry(this.baseSize * 0.8, this.baseSize * 2.2, 4);
+        shipGeo.rotateX(-Math.PI / 2);
 
         const edgesGeo = new THREE.EdgesGeometry(shipGeo);
         this.material = new THREE.LineBasicMaterial({
@@ -107,10 +110,8 @@ class PlayerShip {
         // Wings
         const wingGeo = new THREE.BufferGeometry();
         const wingVertices = new Float32Array([
-            // Left wing
-            0, 0, 0,   -this.size * 1.8, 0, this.size * 0.8,   0, 0, this.size * 0.5,
-            // Right wing
-            0, 0, 0,    this.size * 1.8, 0, this.size * 0.8,   0, 0, this.size * 0.5
+            0, 0, 0,   -this.baseSize * 1.8, 0, this.baseSize * 0.8,   0, 0, this.baseSize * 0.5,
+            0, 0, 0,    this.baseSize * 1.8, 0, this.baseSize * 0.8,   0, 0, this.baseSize * 0.5
         ]);
         wingGeo.setAttribute('position', new THREE.BufferAttribute(wingVertices, 3));
         const wingEdges = new THREE.EdgesGeometry(wingGeo);
@@ -118,7 +119,7 @@ class PlayerShip {
         this.group.add(this.wings);
 
         // Core Glowing Mesh
-        const coreGeo = new THREE.SphereGeometry(this.size * 0.25, 8, 8);
+        const coreGeo = new THREE.SphereGeometry(this.baseSize * 0.25, 8, 8);
         this.coreMaterial = new THREE.MeshBasicMaterial({
             color: 0xff007f,
             transparent: true,
@@ -131,19 +132,16 @@ class PlayerShip {
     }
 
     update(time, shipX, shipY, shipZ, dx, dy) {
-        // Find tunnel center offset at current depth Z
         const center = getTunnelCenter(-shipZ, time);
 
         this.group.position.x = center.x + shipX;
         this.group.position.y = center.y + shipY;
         this.group.position.z = -shipZ;
 
-        // Dynamic Banking/Tilting when steering
         this.group.rotation.z = -dx * 0.002;
         this.group.rotation.x = dy * 0.002;
         this.group.rotation.y = -dx * 0.001;
 
-        // Color update based on palette
         const palette = PALETTES[currentPaletteIdx];
         if (palette.dynamic) {
             this.material.color.setHSL((time * 0.2) % 1.0, 1.0, 0.6);
@@ -226,9 +224,10 @@ class TunnelRing {
 // -------------------------------------------------------------
 class FloatingCube {
     constructor(z) {
-        this.size = 20 + Math.random() * 25;
+        this.baseSize = 20 + Math.random() * 25;
+        this.size = this.baseSize;
 
-        const boxGeo = new THREE.BoxGeometry(this.size, this.size, this.size);
+        const boxGeo = new THREE.BoxGeometry(this.baseSize, this.baseSize, this.baseSize);
         const edgesGeo = new THREE.EdgesGeometry(boxGeo);
 
         this.lineMaterial = new THREE.LineBasicMaterial({
@@ -243,7 +242,7 @@ class FloatingCube {
         this.wireframe = new THREE.LineSegments(edgesGeo, this.lineMaterial);
         this.group.add(this.wireframe);
 
-        const coreGeo = new THREE.SphereGeometry(this.size * 0.25, 8, 8);
+        const coreGeo = new THREE.SphereGeometry(this.baseSize * 0.25, 8, 8);
         this.coreMaterial = new THREE.MeshBasicMaterial({
             color: 0xffffff,
             transparent: true,
@@ -259,7 +258,6 @@ class FloatingCube {
     reset(z = -CONFIG.maxDepth) {
         this.z = z;
 
-        // Place obstacle within playable tunnel cross-section radius
         const angle = Math.random() * Math.PI * 2;
         const dist = Math.random() * (CONFIG.ringRadius * 0.7);
         this.offsetX = Math.cos(angle) * dist;
@@ -386,12 +384,39 @@ for (let i = 0; i < CONFIG.cubeCount; i++) {
 
 const particleSystem = new SpeedParticles();
 
+// Adjust size scaling for Easy / Hard modes
+function applyDifficultySettings() {
+    // Easy mode: ship & cubes are scaled to 60% size
+    const scaleFactor = easyMode ? 0.6 : 1.0;
+
+    playerShip.group.scale.set(scaleFactor, scaleFactor, scaleFactor);
+    playerShip.size = playerShip.baseSize * scaleFactor;
+
+    cubes.forEach(cube => {
+        cube.group.scale.set(scaleFactor, scaleFactor, scaleFactor);
+        cube.size = cube.baseSize * scaleFactor;
+    });
+
+    const modeEl = document.getElementById('modeVal');
+    if (modeEl) {
+        modeEl.innerText = easyMode ? "EASY" : "HARD";
+        modeEl.className = easyMode ? "mode-easy" : "mode-hard";
+    }
+}
+
+// Initialize Easy Mode scaling
+applyDifficultySettings();
+
 // -------------------------------------------------------------
 // Controls & User Inputs
 // -------------------------------------------------------------
 window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
 
+    if (e.code === 'KeyE') {
+        easyMode = !easyMode;
+        applyDifficultySettings();
+    }
     if (e.code === 'KeyC') {
         currentPaletteIdx = (currentPaletteIdx + 1) % PALETTES.length;
         document.getElementById('paletteName').innerText = PALETTES[currentPaletteIdx].name;
@@ -411,7 +436,6 @@ window.addEventListener('keyup', (e) => {
 function handleShipInput(dt) {
     if (isCrashed) return { speed: 0, dx: 0, dy: 0 };
 
-    // Halved steering speed (was 420 * dt)
     const steerSpeed = 210 * dt;
     let dx = 0;
     let dy = 0;
@@ -428,8 +452,49 @@ function handleShipInput(dt) {
 }
 
 // -------------------------------------------------------------
-// Collision Detection
+// Damage & Collision Handling
 // -------------------------------------------------------------
+function takeDamage(amount, scorePenalty, reason) {
+    if (invulnerableTimer > 0) return; // Skip damage during immunity period
+
+    if (easyMode) {
+        playerHealth -= amount;
+        score = Math.max(0, score - scorePenalty); // Deduct points
+        invulnerableTimer = 1.2; // 1.2 sec immunity window
+
+        // Red Screen Flash on Damage
+        const vignette = document.querySelector('.vignette');
+        vignette.classList.add('red-flash');
+        setTimeout(() => {
+            if (!isCrashed) vignette.classList.remove('red-flash');
+        }, 250);
+
+        updateHUDHealth();
+
+        if (playerHealth <= 0) {
+            triggerCrash(reason);
+        }
+    } else {
+        // Hard mode: instant crash
+        playerHealth = 0;
+        updateHUDHealth();
+        triggerCrash(reason);
+    }
+}
+
+function updateHUDHealth() {
+    const healthEl = document.getElementById('healthVal');
+    healthEl.innerText = Math.max(0, playerHealth) + "%";
+
+    if (playerHealth > 60) {
+        healthEl.className = "health-high";
+    } else if (playerHealth > 25) {
+        healthEl.className = "health-medium";
+    } else {
+        healthEl.className = "health-low";
+    }
+}
+
 function checkCollisions(time) {
     if (isCrashed) return;
 
@@ -444,7 +509,7 @@ function checkCollisions(time) {
     const distFromCenter = Math.hypot(shipOffsetX, shipOffsetY);
 
     if (distFromCenter > maxRadius) {
-        triggerCrash("HIT TUNNEL WALL");
+        takeDamage(25, 150, "HIT TUNNEL WALL");
         return;
     }
 
@@ -462,8 +527,8 @@ function checkCollisions(time) {
                 shipZ - cube.z
             );
 
-            if (dist3D < (cube.size * 0.6 + playerShip.size * 0.6)) {
-                triggerCrash("HIT OBSTACLE");
+            if (dist3D < (cube.size * 0.65 + playerShip.size * 0.65)) {
+                takeDamage(25, 150, "HIT OBSTACLE CUBE");
                 return;
             }
         }
@@ -483,8 +548,13 @@ function triggerCrash(reason) {
 function restartGame() {
     isCrashed = false;
     score = 0;
+    playerHealth = 100;
+    invulnerableTimer = 0;
     shipOffsetX = 0;
     shipOffsetY = 0;
+
+    playerShip.group.visible = true;
+    updateHUDHealth();
 
     document.querySelector('.vignette').classList.remove('red-flash');
     document.getElementById('statusVal').innerText = "SURVIVING";
@@ -492,7 +562,7 @@ function restartGame() {
     document.getElementById('crash-overlay').classList.add('hidden');
 
     // Reset obstacle cubes
-    cubes.forEach((cube, i) => {
+    cubes.forEach((cube) => {
         const z = -(CONFIG.minDepth + Math.random() * (CONFIG.maxDepth - CONFIG.minDepth));
         cube.reset(z);
     });
@@ -516,7 +586,15 @@ function animate(currentTime) {
         document.getElementById('fps').innerText = fps;
     }
 
-    // Player controls and movement
+    // Invulnerability Blink Effect
+    if (invulnerableTimer > 0) {
+        invulnerableTimer -= dt;
+        playerShip.group.visible = Math.floor(time * 25) % 2 === 0;
+    } else {
+        playerShip.group.visible = true;
+    }
+
+    // Controls & Speed
     const { speed, dx, dy } = handleShipInput(dt);
 
     if (!isCrashed) {
@@ -545,7 +623,7 @@ function animate(currentTime) {
     cubes.forEach(cube => cube.update(dt, speed, time));
     particleSystem.update(dt, speed, time);
 
-    // Update Player Ship Position & Check Collisions
+    // Update Player Ship & Check Collisions
     playerShip.update(time, shipOffsetX, shipOffsetY, shipDepth, dx, dy);
     checkCollisions(time);
 

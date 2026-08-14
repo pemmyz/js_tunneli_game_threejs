@@ -72,7 +72,7 @@ html, body {
     border-radius: 4px;
     backdrop-filter: blur(4px);
     transition: opacity 0.3s ease;
-    width: 310px;
+    width: 320px;
 }
 
 .hud-title {
@@ -90,6 +90,34 @@ html, body {
     color: #00ffcc;
     text-shadow: 0 0 5px #00ffcc;
     margin-bottom: 12px;
+}
+
+/* Mode Styles */
+.mode-easy {
+    color: #00ffcc;
+    font-weight: bold;
+}
+
+.mode-hard {
+    color: #ff0055;
+    font-weight: bold;
+}
+
+/* Health Indicator Styles */
+.health-high {
+    color: #00ff66;
+    font-weight: bold;
+}
+
+.health-medium {
+    color: #ffcc00;
+    font-weight: bold;
+}
+
+.health-low {
+    color: #ff0055;
+    font-weight: bold;
+    animation: blink 0.5s infinite alternate;
 }
 
 .status-alive {

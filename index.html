@@ -21,29 +21,32 @@
     <div id="hud">
         <div class="hud-title">SYS // DEMO_TUNNEL_RUNNER.EXE</div>
         <div class="hud-stats">
+            <div>MODE: <span id="modeVal" class="mode-easy">EASY</span></div>
             <div>STATUS: <span id="statusVal" class="status-alive">SURVIVING</span></div>
+            <div>SHIELD / HP: <span id="healthVal" class="health-high">100%</span></div>
             <div>SCORE: <span id="scoreVal">0</span></div>
             <div>FPS: <span id="fps">60</span></div>
             <div>SPEED: <span id="speedVal">100</span> KM/H</div>
             <div>PALETTE: <span id="paletteName">NEON CYBER</span></div>
         </div>
 
-        <!-- Updated value to 250 and max limit to 500 -->
+        <!-- Slider for ship depth -->
         <div class="hud-slider-group">
             <label for="depthSlider">SHIP DEPTH (Z-DISTANCE):</label>
             <input type="range" id="depthSlider" min="30" max="500" value="250">
         </div>
         <div class="hud-controls">
             <p><strong>[W/A/S/D]</strong> or <strong>[ARROWS]</strong> Steer Ship</p>
-            <p><strong>[SPACE]</strong> Hyperdrive | <strong>[C]</strong> Change Palette</p>
-            <p><strong>[R]</strong> Restart | <strong>[H]</strong> Toggle HUD</p>
+            <p><strong>[SPACE]</strong> Hyperdrive | <strong>[E]</strong> Toggle Easy/Hard</p>
+            <p><strong>[C]</strong> Change Palette | <strong>[R]</strong> Restart</p>
+            <p><strong>[H]</strong> Toggle HUD</p>
         </div>
     </div>
 
     <!-- Crash / Game Over Overlay -->
     <div id="crash-overlay" class="hidden">
         <div class="crash-title">SYSTEM CRASH!</div>
-        <div class="crash-subtitle">COLLISION DETECTED</div>
+        <div class="crash-subtitle">SHIP DESTROYED</div>
         <div class="crash-score">FINAL SCORE: <span id="finalScore">0</span></div>
         <div class="crash-prompt">PRESS [R] TO RESTART</div>
     </div>
