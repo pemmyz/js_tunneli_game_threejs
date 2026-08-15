@@ -28,11 +28,13 @@ let hyperdrive = false;
 
 // Game & Health State
 let easyMode = true;        // Easy mode enabled by default
+let isPaused = false;       // Pause state
 let playerHealth = 100;     // Max HP = 100
 let invulnerableTimer = 0;  // Immunity cooldown on hit
 let isCrashed = false;
 let score = 0;
 let shipDepth = 250;        // Default distance inside tunnel from camera
+let cameraFov = 85;         // Default FOV increased by 10 degrees (75 -> 85)
 
 // Input & Controls State
 const keys = {};
@@ -44,7 +46,7 @@ const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x030108, 0.0011);
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 3000);
+const camera = new THREE.PerspectiveCamera(cameraFov, window.innerWidth / window.innerHeight, 1, 3000);
 camera.position.set(0, 0, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -52,6 +54,16 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setClearColor(0x030108, 1);
 container.appendChild(renderer.domElement);
+
+// FOV Slider Listener
+const fovSlider = document.getElementById('fovSlider');
+const fovVal = document.getElementById('fovVal');
+fovSlider.addEventListener('input', (e) => {
+    cameraFov = parseFloat(e.target.value);
+    fovVal.innerText = cameraFov;
+    camera.fov = cameraFov;
+    camera.updateProjectionMatrix();
+});
 
 // Depth Slider Listener
 const depthSlider = document.getElementById('depthSlider');
@@ -386,7 +398,6 @@ const particleSystem = new SpeedParticles();
 
 // Adjust size scaling for Easy / Hard modes
 function applyDifficultySettings() {
-    // Easy mode: ship & cubes are scaled to 60% size
     const scaleFactor = easyMode ? 0.6 : 1.0;
 
     playerShip.group.scale.set(scaleFactor, scaleFactor, scaleFactor);
@@ -413,6 +424,19 @@ applyDifficultySettings();
 window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
 
+    if (e.code === 'KeyP') {
+        if (!isCrashed) {
+            isPaused = !isPaused;
+            const statusEl = document.getElementById('statusVal');
+            if (isPaused) {
+                statusEl.innerText = "PAUSED";
+                statusEl.className = "status-paused";
+            } else {
+                statusEl.innerText = "SURVIVING";
+                statusEl.className = "status-alive";
+            }
+        }
+    }
     if (e.code === 'KeyE') {
         easyMode = !easyMode;
         applyDifficultySettings();
@@ -434,7 +458,7 @@ window.addEventListener('keyup', (e) => {
 });
 
 function handleShipInput(dt) {
-    if (isCrashed) return { speed: 0, dx: 0, dy: 0 };
+    if (isCrashed || isPaused) return { speed: 0, dx: 0, dy: 0 };
 
     const steerSpeed = 210 * dt;
     let dx = 0;
@@ -455,14 +479,13 @@ function handleShipInput(dt) {
 // Damage & Collision Handling
 // -------------------------------------------------------------
 function takeDamage(amount, scorePenalty, reason) {
-    if (invulnerableTimer > 0) return; // Skip damage during immunity period
+    if (invulnerableTimer > 0) return;
 
     if (easyMode) {
         playerHealth -= amount;
-        score = Math.max(0, score - scorePenalty); // Deduct points
-        invulnerableTimer = 1.2; // 1.2 sec immunity window
+        score = Math.max(0, score - scorePenalty);
+        invulnerableTimer = 1.2;
 
-        // Red Screen Flash on Damage
         const vignette = document.querySelector('.vignette');
         vignette.classList.add('red-flash');
         setTimeout(() => {
@@ -475,7 +498,6 @@ function takeDamage(amount, scorePenalty, reason) {
             triggerCrash(reason);
         }
     } else {
-        // Hard mode: instant crash
         playerHealth = 0;
         updateHUDHealth();
         triggerCrash(reason);
@@ -496,7 +518,7 @@ function updateHUDHealth() {
 }
 
 function checkCollisions(time) {
-    if (isCrashed) return;
+    if (isCrashed || isPaused) return;
 
     const shipZ = -shipDepth;
     const shipCenter = getTunnelCenter(shipZ, time);
@@ -547,6 +569,7 @@ function triggerCrash(reason) {
 
 function restartGame() {
     isCrashed = false;
+    isPaused = false;
     score = 0;
     playerHealth = 100;
     invulnerableTimer = 0;
@@ -561,7 +584,6 @@ function restartGame() {
     document.getElementById('statusVal').className = "status-alive";
     document.getElementById('crash-overlay').classList.add('hidden');
 
-    // Reset obstacle cubes
     cubes.forEach((cube) => {
         const z = -(CONFIG.minDepth + Math.random() * (CONFIG.maxDepth - CONFIG.minDepth));
         cube.reset(z);
@@ -574,6 +596,14 @@ function restartGame() {
 function animate(currentTime) {
     const dt = Math.min((currentTime - lastTime) / 1000, 0.1);
     lastTime = currentTime;
+
+    // If paused, render scene without advancing simulation
+    if (isPaused) {
+        renderer.render(scene, camera);
+        requestAnimationFrame(animate);
+        return;
+    }
+
     time += dt;
 
     // FPS Counter

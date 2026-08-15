@@ -37,7 +37,7 @@ html, body {
         90deg,
         rgba(255, 0, 0, 0.03),
         rgba(0, 255, 0, 0.01),
-        rgba(0, 0, 255, 0.03)
+        rgba(0, 255, 0, 0.03)
     );
     background-size: 100% 4px, 6px 100%;
 }
@@ -125,15 +125,21 @@ html, body {
     font-weight: bold;
 }
 
+.status-paused {
+    color: #ffcc00;
+    font-weight: bold;
+    animation: blink 0.8s infinite alternate;
+}
+
 .status-crashed {
     color: #ff0055;
     font-weight: bold;
     animation: blink 0.5s infinite alternate;
 }
 
-/* Depth Slider Styling */
+/* Sliders Styling */
 .hud-slider-group {
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     padding-top: 8px;
     border-top: 1px dashed rgba(0, 255, 204, 0.3);
 }
