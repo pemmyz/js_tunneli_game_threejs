@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Retro Demoscene 3D Tunnel - Spaceship Dodge</title>
     <link rel="stylesheet" href="style.css">
     <!-- Three.js CDN -->
@@ -10,52 +10,73 @@
 </head>
 <body>
 
-    <!-- Container for Three.js WebGL Canvas -->
-    <div id="canvas-container"></div>
+    <!-- Fullscreen / Mobile Mode Button in Top Left -->
+    <button id="mobile-btn">📱 FULLSCREEN / TOUCH MODE</button>
 
-    <!-- Retro CRT Overlay -->
-    <div class="crt-overlay"></div>
-    <div class="vignette"></div>
+    <!-- Game Screen filling whole window -->
+    <div id="game-container">
+        <div id="screen">
+            <!-- Three.js Canvas Container -->
+            <div id="canvas-container"></div>
 
-    <!-- HUD Overlay -->
-    <div id="hud">
-        <div class="hud-title">SYS // DEMO_TUNNEL_RUNNER.EXE</div>
-        <div class="hud-stats">
-            <div>MODE: <span id="modeVal" class="mode-easy">EASY</span></div>
-            <div>STATUS: <span id="statusVal" class="status-alive">SURVIVING</span></div>
-            <div>SHIELD / HP: <span id="healthVal" class="health-high">100%</span></div>
-            <div>SCORE: <span id="scoreVal">0</span></div>
-            <div>FPS: <span id="fps">60</span></div>
-            <div>SPEED: <span id="speedVal">100</span> KM/H</div>
-            <div>PALETTE: <span id="paletteName">NEON CYBER</span></div>
-        </div>
+            <!-- Retro CRT Overlay -->
+            <div class="crt-overlay"></div>
+            <div class="vignette"></div>
 
-        <!-- Slider for Camera FOV -->
-        <div class="hud-slider-group">
-            <label for="fovSlider">CAMERA FOV: <span id="fovVal">85</span>°</label>
-            <input type="range" id="fovSlider" min="45" max="125" value="85">
-        </div>
+            <!-- HUD Overlay (Positioned below the Fullscreen button) -->
+            <div id="hud">
+                <div class="hud-title">SYS // DEMO_TUNNEL_RUNNER.EXE</div>
+                <div class="hud-stats">
+                    <div>MODE: <span id="modeVal" class="mode-easy">EASY</span></div>
+                    <div>STATUS: <span id="statusVal" class="status-alive">SURVIVING</span></div>
+                    <div>SHIELD / HP: <span id="healthVal" class="health-high">100%</span></div>
+                    <div>SCORE: <span id="scoreVal">0</span></div>
+                    <div>FPS: <span id="fps">60</span></div>
+                    <div>SPEED: <span id="speedVal">100</span> KM/H</div>
+                    <div>PALETTE: <span id="paletteName">NEON CYBER</span></div>
+                </div>
 
-        <!-- Slider for ship depth -->
-        <div class="hud-slider-group">
-            <label for="depthSlider">SHIP DEPTH (Z-DISTANCE):</label>
-            <input type="range" id="depthSlider" min="30" max="500" value="250">
-        </div>
+                <!-- Slider for Camera FOV -->
+                <div class="hud-slider-group">
+                    <label for="fovSlider">CAMERA FOV: <span id="fovVal">85</span>°</label>
+                    <input type="range" id="fovSlider" min="45" max="125" value="85">
+                </div>
 
-        <div class="hud-controls">
-            <p><strong>[W/A/S/D]</strong> or <strong>[ARROWS]</strong> Steer Ship</p>
-            <p><strong>[SPACE]</strong> Hyperdrive | <strong>[E]</strong> Toggle Easy/Hard</p>
-            <p><strong>[P]</strong> Pause / Resume | <strong>[C]</strong> Change Palette</p>
-            <p><strong>[R]</strong> Restart | <strong>[H]</strong> Toggle HUD</p>
+                <!-- Slider for ship depth -->
+                <div class="hud-slider-group">
+                    <label for="depthSlider">SHIP DEPTH (Z-DISTANCE):</label>
+                    <input type="range" id="depthSlider" min="30" max="500" value="250">
+                </div>
+
+                <div class="hud-controls">
+                    <p><strong>[W/A/S/D]</strong> or <strong>[ARROWS]</strong> Steer Ship</p>
+                    <p><strong>[SPACE]</strong> Hyperdrive | <strong>[E]</strong> Easy/Hard</p>
+                    <p><strong>[P]</strong> Pause | <strong>[C]</strong> Palette | <strong>[R]</strong> Restart</p>
+                </div>
+            </div>
+
+            <!-- Crash / Game Over Overlay -->
+            <div id="crash-overlay" class="hidden">
+                <div class="crash-title">SYSTEM CRASH!</div>
+                <div class="crash-subtitle">SHIP DESTROYED</div>
+                <div class="crash-score">FINAL SCORE: <span id="finalScore">0</span></div>
+                <button id="restart-btn" class="crash-prompt">TAP / PRESS [R] TO RESTART</button>
+            </div>
         </div>
     </div>
 
-    <!-- Crash / Game Over Overlay -->
-    <div id="crash-overlay" class="hidden">
-        <div class="crash-title">SYSTEM CRASH!</div>
-        <div class="crash-subtitle">SHIP DESTROYED</div>
-        <div class="crash-score">FINAL SCORE: <span id="finalScore">0</span></div>
-        <div class="crash-prompt">PRESS [R] TO RESTART</div>
+    <!-- Mobile Touch Controls (2X Size) -->
+    <div id="mobile-controls">
+        <!-- Bottom Left: Left & Right -->
+        <div id="mobile-dpad">
+            <button id="mobile-left" class="mobile-control-btn" aria-label="Steer Left">◀</button>
+            <button id="mobile-right" class="mobile-control-btn" aria-label="Steer Right">▶</button>
+        </div>
+        <!-- Bottom Right: Up & Down -->
+        <div id="mobile-action">
+            <button id="mobile-up" class="mobile-control-btn" aria-label="Steer Up">▲</button>
+            <button id="mobile-down" class="mobile-control-btn" aria-label="Steer Down">▼</button>
+        </div>
     </div>
 
     <script src="script.js"></script>

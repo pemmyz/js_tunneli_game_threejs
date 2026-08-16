@@ -27,21 +27,21 @@ let speedMultiplier = 1.0;
 let hyperdrive = false;
 
 // Game & Health State
-let easyMode = true;        // Easy mode enabled by default
-let isPaused = false;       // Pause state
-let playerHealth = 100;     // Max HP = 100
-let invulnerableTimer = 0;  // Immunity cooldown on hit
+let easyMode = true;
+let isPaused = false;
+let playerHealth = 100;
+let invulnerableTimer = 0;
 let isCrashed = false;
 let score = 0;
-let shipDepth = 250;        // Default distance inside tunnel from camera
-let cameraFov = 85;         // Default FOV increased by 10 degrees (75 -> 85)
+let shipDepth = 250;
+let cameraFov = 85;
 
 // Input & Controls State
 const keys = {};
 let shipOffsetX = 0;
 let shipOffsetY = 0;
 
-// Three.js Scene Setup
+// Three.js Fullscreen Scene Setup
 const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x030108, 0.0011);
@@ -54,6 +54,97 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setClearColor(0x030108, 1);
 container.appendChild(renderer.domElement);
+
+// -------------------------------------------------------------
+// Window Resize & Fullscreen Handling
+// -------------------------------------------------------------
+function handleResize() {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    renderer.setSize(width, height);
+}
+
+window.addEventListener('resize', handleResize);
+
+function updateFullscreenState() {
+    const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const mobileToggleBtn = document.getElementById('mobile-btn');
+    if (isFullscreen) {
+        document.body.classList.add('mobile-mode');
+        mobileToggleBtn.innerText = "✖ EXIT FULLSCREEN";
+    } else {
+        document.body.classList.remove('mobile-mode');
+        mobileToggleBtn.innerText = "📱 FULLSCREEN / TOUCH MODE";
+    }
+    handleResize();
+}
+
+function toggleFullscreen() {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        const el = document.documentElement;
+        if (el.requestFullscreen) {
+            el.requestFullscreen();
+        } else if (el.webkitRequestFullscreen) {
+            el.webkitRequestFullscreen();
+        }
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        }
+    }
+}
+
+document.getElementById('mobile-btn').addEventListener('click', toggleFullscreen);
+window.addEventListener('fullscreenchange', updateFullscreenState);
+window.addEventListener('webkitfullscreenchange', updateFullscreenState);
+
+// -------------------------------------------------------------
+// Multi-Touch Screen Controls (2X Size)
+// -------------------------------------------------------------
+function setupMobileControls() {
+    const mobileLeft = document.getElementById('mobile-left');
+    const mobileRight = document.getElementById('mobile-right');
+    const mobileUp = document.getElementById('mobile-up');
+    const mobileDown = document.getElementById('mobile-down');
+
+    const addControlListener = (element, keyCodes) => {
+        if (!element) return;
+        const press = (e) => {
+            if (e.cancelable) e.preventDefault();
+            keyCodes.forEach(k => keys[k] = true);
+        };
+        const release = (e) => {
+            if (e.cancelable) e.preventDefault();
+            keyCodes.forEach(k => keys[k] = false);
+        };
+
+        // Touch events
+        element.addEventListener('touchstart', press, { passive: false });
+        element.addEventListener('touchend', release, { passive: false });
+        element.addEventListener('touchcancel', release, { passive: false });
+
+        // Mouse click events for testing
+        element.addEventListener('mousedown', press);
+        element.addEventListener('mouseup', release);
+        element.addEventListener('mouseleave', () => {
+            keyCodes.forEach(k => keys[k] = false);
+        });
+    };
+
+    // Bottom Left: Left / Right
+    addControlListener(mobileLeft, ['KeyA', 'ArrowLeft']);
+    addControlListener(mobileRight, ['KeyD', 'ArrowRight']);
+
+    // Bottom Right: Up / Down
+    addControlListener(mobileUp, ['KeyW', 'ArrowUp']);
+    addControlListener(mobileDown, ['KeyS', 'ArrowDown']);
+}
+
+setupMobileControls();
 
 // FOV Slider Listener
 const fovSlider = document.getElementById('fovSlider');
@@ -71,11 +162,9 @@ depthSlider.addEventListener('input', (e) => {
     shipDepth = parseFloat(e.target.value);
 });
 
-// Resize Handler
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+// Restart button listener for mobile / click
+document.getElementById('restart-btn').addEventListener('click', () => {
+    if (isCrashed) restartGame();
 });
 
 // Time Tracking
@@ -104,7 +193,6 @@ class PlayerShip {
         this.size = this.baseSize;
         this.group = new THREE.Group();
 
-        // Ship Low-Poly Wireframe Geometry (Nose pointing along -Z)
         const shipGeo = new THREE.ConeGeometry(this.baseSize * 0.8, this.baseSize * 2.2, 4);
         shipGeo.rotateX(-Math.PI / 2);
 
@@ -119,7 +207,6 @@ class PlayerShip {
         this.wireframe = new THREE.LineSegments(edgesGeo, this.material);
         this.group.add(this.wireframe);
 
-        // Wings
         const wingGeo = new THREE.BufferGeometry();
         const wingVertices = new Float32Array([
             0, 0, 0,   -this.baseSize * 1.8, 0, this.baseSize * 0.8,   0, 0, this.baseSize * 0.5,
@@ -130,7 +217,6 @@ class PlayerShip {
         this.wings = new THREE.LineSegments(wingEdges, this.material);
         this.group.add(this.wings);
 
-        // Core Glowing Mesh
         const coreGeo = new THREE.SphereGeometry(this.baseSize * 0.25, 8, 8);
         this.coreMaterial = new THREE.MeshBasicMaterial({
             color: 0xff007f,
@@ -396,7 +482,6 @@ for (let i = 0; i < CONFIG.cubeCount; i++) {
 
 const particleSystem = new SpeedParticles();
 
-// Adjust size scaling for Easy / Hard modes
 function applyDifficultySettings() {
     const scaleFactor = easyMode ? 0.6 : 1.0;
 
@@ -415,11 +500,10 @@ function applyDifficultySettings() {
     }
 }
 
-// Initialize Easy Mode scaling
 applyDifficultySettings();
 
 // -------------------------------------------------------------
-// Controls & User Inputs
+// Controls & Keyboard Inputs
 // -------------------------------------------------------------
 window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
@@ -597,7 +681,6 @@ function animate(currentTime) {
     const dt = Math.min((currentTime - lastTime) / 1000, 0.1);
     lastTime = currentTime;
 
-    // If paused, render scene without advancing simulation
     if (isPaused) {
         renderer.render(scene, camera);
         requestAnimationFrame(animate);
@@ -606,7 +689,6 @@ function animate(currentTime) {
 
     time += dt;
 
-    // FPS Counter
     frameCount++;
     fpsTimer += dt;
     if (fpsTimer >= 0.5) {
@@ -616,7 +698,6 @@ function animate(currentTime) {
         document.getElementById('fps').innerText = fps;
     }
 
-    // Invulnerability Blink Effect
     if (invulnerableTimer > 0) {
         invulnerableTimer -= dt;
         playerShip.group.visible = Math.floor(time * 25) % 2 === 0;
@@ -624,7 +705,6 @@ function animate(currentTime) {
         playerShip.group.visible = true;
     }
 
-    // Controls & Speed
     const { speed, dx, dy } = handleShipInput(dt);
 
     if (!isCrashed) {
@@ -632,7 +712,6 @@ function animate(currentTime) {
         document.getElementById('scoreVal').innerText = Math.floor(score);
     }
 
-    // Camera follow tunnel
     let shakeX = 0;
     let shakeY = 0;
     if (hyperdrive || isCrashed) {
@@ -648,23 +727,17 @@ function animate(currentTime) {
     const targetCenter = getTunnelCenter(-200, time);
     camera.lookAt(targetCenter.x, targetCenter.y, -200);
 
-    // Update Objects
     rings.forEach(ring => ring.update(dt, speed, time));
     cubes.forEach(cube => cube.update(dt, speed, time));
     particleSystem.update(dt, speed, time);
 
-    // Update Player Ship & Check Collisions
     playerShip.update(time, shipOffsetX, shipOffsetY, shipDepth, dx, dy);
     checkCollisions(time);
 
-    // Update HUD Stats
     document.getElementById('speedVal').innerText = Math.round(speed);
 
-    // Render WebGL Scene
     renderer.render(scene, camera);
-
     requestAnimationFrame(animate);
 }
 
-// Start Animation Loop
 requestAnimationFrame(animate);
