@@ -23,17 +23,47 @@
             <div class="crt-overlay"></div>
             <div class="vignette"></div>
 
-            <!-- HUD Overlay (Positioned below the Fullscreen button) -->
+            <!-- Floating Virtual Analog Joystick (Appears at touch/click position) -->
+            <div id="virtual-joystick" class="joystick-container hidden">
+                <div class="joystick-base">
+                    <div class="joystick-ring"></div>
+                    <div class="joystick-crosshair-h"></div>
+                    <div class="joystick-crosshair-v"></div>
+                    <div class="joystick-thumb"></div>
+                </div>
+            </div>
+
+            <!-- HUD Overlay -->
             <div id="hud">
                 <div class="hud-title">SYS // DEMO_TUNNEL_RUNNER.EXE</div>
                 <div class="hud-stats">
+                    <div>STYLE: <span id="styleVal" class="style-classic">RETRO CLASSIC</span></div>
+                    <div>CONTROL: <span id="touchVal" class="touch-joystick">FLOATING JOYSTICK</span></div>
                     <div>MODE: <span id="modeVal" class="mode-easy">EASY</span></div>
                     <div>STATUS: <span id="statusVal" class="status-alive">SURVIVING</span></div>
                     <div>SHIELD / HP: <span id="healthVal" class="health-high">100%</span></div>
                     <div>SCORE: <span id="scoreVal">0</span></div>
                     <div>FPS: <span id="fps">60</span></div>
-                    <div>SPEED: <span id="speedVal">100</span> KM/H</div>
+                    <div>SPEED: <span id="speedVal">550</span> KM/H</div>
                     <div>PALETTE: <span id="paletteName">NEON CYBER</span></div>
+                </div>
+
+                <!-- Touch / Mouse Control Mode Selector -->
+                <div class="hud-slider-group">
+                    <label for="touchSelect">INPUT CONTROL MODE:</label>
+                    <select id="touchSelect" class="hud-select">
+                        <option value="joystick" selected>FLOATING JOYSTICK - MOUSE & TOUCH (DEFAULT)</option>
+                        <option value="dpad">FIXED DPAD BUTTONS (OLD STYLE)</option>
+                    </select>
+                </div>
+
+                <!-- Speed / Engine Style Selector -->
+                <div class="hud-slider-group">
+                    <label for="styleSelect">ENGINE SPEED STYLE:</label>
+                    <select id="styleSelect" class="hud-select">
+                        <option value="classic" selected>RETRO CLASSIC (DEFAULT: 550 / HYPER: 1375)</option>
+                        <option value="worms">WORMS - NEW (NORMAL: 180 / HYPER: 550)</option>
+                    </select>
                 </div>
 
                 <!-- Slider for Camera FOV -->
@@ -49,8 +79,10 @@
                 </div>
 
                 <div class="hud-controls">
+                    <p><strong>[CLICK/TOUCH & DRAG]</strong> Floating Analog Joystick</p>
                     <p><strong>[W/A/S/D]</strong> or <strong>[ARROWS]</strong> Steer Ship</p>
-                    <p><strong>[SPACE]</strong> Hyperdrive | <strong>[E]</strong> Easy/Hard</p>
+                    <p><strong>[SPACE]</strong> Hyperdrive | <strong>[T]</strong> Speed Style</p>
+                    <p><strong>[J]</strong> Joystick / DPad | <strong>[E]</strong> Difficulty</p>
                     <p><strong>[P]</strong> Pause | <strong>[C]</strong> Palette | <strong>[R]</strong> Restart</p>
                 </div>
             </div>
@@ -65,8 +97,8 @@
         </div>
     </div>
 
-    <!-- Mobile Touch Controls (2X Size) -->
-    <div id="mobile-controls">
+    <!-- Old Style Mobile Touch D-Pad (Hidden by default in Joystick mode) -->
+    <div id="mobile-controls" class="hidden">
         <!-- Bottom Left: Left & Right -->
         <div id="mobile-dpad">
             <button id="mobile-left" class="mobile-control-btn" aria-label="Steer Left">◀</button>

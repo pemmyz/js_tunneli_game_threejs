@@ -6,13 +6,32 @@
 const CONFIG = {
     maxDepth: 2200,          // Distance far plane
     minDepth: 10,            // Distance near camera recycle plane
-    baseSpeed: 550,          // Travel speed
     ringCount: 50,           // Number of tunnel rings
     cubeCount: 35,           // Floating wireframe cubes
     starCount: 250,          // Speed lines/dust particles
     ringSegments: 24,        // Vertices per ring polygon
     ringRadius: 260          // Base tunnel ring radius
 };
+
+// Speed Style Profiles (Retro Classic is default; Worms is the new style option)
+const SPEED_STYLES = {
+    classic: {
+        id: "classic",
+        displayName: "RETRO CLASSIC",
+        normalSpeed: 550,    // Default base speed
+        hyperSpeed: 1375,    // Classic hyper speed (550 * 2.5)
+        steerSpeed: 210
+    },
+    worms: {
+        id: "worms",
+        displayName: "WORMS (NEW)",
+        normalSpeed: 180,    // Worms relaxed cruising speed
+        hyperSpeed: 550,     // Worms hyper speed (matches old normal speed)
+        steerSpeed: 175
+    }
+};
+
+let currentStyle = 'classic'; // Retro Classic is default
 
 const PALETTES = [
     { name: "NEON CYBER", rings: [0.83, 0.88, 0.5], cubes: [0.88, 0.14, 0.78], ship: 0.5 },
@@ -23,7 +42,6 @@ const PALETTES = [
 ];
 
 let currentPaletteIdx = 0;
-let speedMultiplier = 1.0;
 let hyperdrive = false;
 
 // Game & Health State
@@ -54,6 +72,155 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setClearColor(0x030108, 1);
 container.appendChild(renderer.domElement);
+
+// -------------------------------------------------------------
+// Floating Virtual Analog Joystick Module (Mouse & Touchscreen)
+// -------------------------------------------------------------
+const VirtualJoystick = (function () {
+    let mode = 'joystick'; // 'joystick' (default) or 'dpad'
+    let activePointerId = null;
+    let startX = 0;
+    let startY = 0;
+    const maxRadius = 120; // Max thumb travel distance in px
+
+    const vector = { x: 0, y: 0 };
+    const joystickEl = document.getElementById('virtual-joystick');
+    const thumbEl = joystickEl ? joystickEl.querySelector('.joystick-thumb') : null;
+
+    function init() {
+        const gameContainer = document.getElementById('game-container');
+        if (!gameContainer) return;
+
+        // Pointer events support both mouse clicks and touchscreen touches
+        gameContainer.addEventListener('pointerdown', onPointerDown, { passive: false });
+        window.addEventListener('pointermove', onPointerMove, { passive: false });
+        window.addEventListener('pointerup', onPointerUp, { passive: false });
+        window.addEventListener('pointercancel', onPointerUp, { passive: false });
+    }
+
+    function isInteractiveElement(target) {
+        if (!target) return false;
+        return !!target.closest('#hud, #mobile-btn, #restart-btn, #mobile-controls, select, input, button, label, a');
+    }
+
+    function onPointerDown(e) {
+        if (mode !== 'joystick') return;
+        if (activePointerId !== null) return; // Already tracking an active pointer
+        if (isInteractiveElement(e.target)) return;
+
+        if (e.cancelable) e.preventDefault();
+        activePointerId = e.pointerId;
+        startX = e.clientX;
+        startY = e.clientY;
+
+        // Appear centered at the exact touch / click location
+        if (joystickEl) {
+            joystickEl.style.left = `${startX}px`;
+            joystickEl.style.top = `${startY}px`;
+            joystickEl.classList.remove('hidden');
+        }
+        if (thumbEl) {
+            thumbEl.style.transform = 'translate(0px, 0px)';
+        }
+
+        vector.x = 0;
+        vector.y = 0;
+    }
+
+    function onPointerMove(e) {
+        if (mode !== 'joystick' || activePointerId === null) return;
+        if (e.pointerId !== activePointerId) return;
+
+        if (e.cancelable) e.preventDefault();
+
+        // Calculate offset vector relative to the touch press position
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+        const distance = Math.hypot(deltaX, deltaY);
+
+        if (distance === 0) {
+            vector.x = 0;
+            vector.y = 0;
+            if (thumbEl) thumbEl.style.transform = 'translate(0px, 0px)';
+            return;
+        }
+
+        // Clamp travel within outer base circle
+        const clampedDist = Math.min(distance, maxRadius);
+        const angle = Math.atan2(deltaY, deltaX);
+
+        const thumbX = Math.cos(angle) * clampedDist;
+        const thumbY = Math.sin(angle) * clampedDist;
+
+        if (thumbEl) {
+            thumbEl.style.transform = `translate(${thumbX}px, ${thumbY}px)`;
+        }
+
+        // Output normalized vector from -1.0 to 1.0
+        const strength = clampedDist / maxRadius;
+        vector.x = Math.cos(angle) * strength;
+        // Invert Y so dragging upward steers ship upward
+        vector.y = -(Math.sin(angle) * strength);
+    }
+
+    function onPointerUp(e) {
+        if (mode !== 'joystick' || activePointerId === null) return;
+        if (e.pointerId !== activePointerId) return;
+
+        activePointerId = null;
+        vector.x = 0;
+        vector.y = 0;
+
+        if (joystickEl) joystickEl.classList.add('hidden');
+        if (thumbEl) thumbEl.style.transform = 'translate(0px, 0px)';
+    }
+
+    function setMode(newMode) {
+        mode = newMode;
+        activePointerId = null;
+        vector.x = 0;
+        vector.y = 0;
+
+        if (joystickEl) joystickEl.classList.add('hidden');
+
+        const dpadEl = document.getElementById('mobile-controls');
+        if (dpadEl) {
+            if (mode === 'dpad') {
+                dpadEl.classList.remove('hidden');
+            } else {
+                dpadEl.classList.add('hidden');
+            }
+        }
+
+        const touchVal = document.getElementById('touchVal');
+        if (touchVal) {
+            touchVal.innerText = mode === 'joystick' ? 'FLOATING JOYSTICK' : 'DPAD';
+            touchVal.className = mode === 'joystick' ? 'touch-joystick' : 'touch-dpad';
+        }
+
+        const touchSelect = document.getElementById('touchSelect');
+        if (touchSelect && touchSelect.value !== mode) {
+            touchSelect.value = mode;
+        }
+    }
+
+    function getVector() {
+        return vector;
+    }
+
+    function getMode() {
+        return mode;
+    }
+
+    return {
+        init,
+        setMode,
+        getVector,
+        getMode
+    };
+})();
+
+VirtualJoystick.init();
 
 // -------------------------------------------------------------
 // Window Resize & Fullscreen Handling
@@ -103,7 +270,7 @@ window.addEventListener('fullscreenchange', updateFullscreenState);
 window.addEventListener('webkitfullscreenchange', updateFullscreenState);
 
 // -------------------------------------------------------------
-// Multi-Touch Screen Controls (2X Size)
+// Multi-Touch Screen Controls (Old Style DPad)
 // -------------------------------------------------------------
 function setupMobileControls() {
     const mobileLeft = document.getElementById('mobile-left');
@@ -127,7 +294,7 @@ function setupMobileControls() {
         element.addEventListener('touchend', release, { passive: false });
         element.addEventListener('touchcancel', release, { passive: false });
 
-        // Mouse click events for testing
+        // Mouse events for testing
         element.addEventListener('mousedown', press);
         element.addEventListener('mouseup', release);
         element.addEventListener('mouseleave', () => {
@@ -145,6 +312,39 @@ function setupMobileControls() {
 }
 
 setupMobileControls();
+
+// -------------------------------------------------------------
+// HUD Options & Speed Style Switcher
+// -------------------------------------------------------------
+function setSpeedStyle(styleKey) {
+    if (!SPEED_STYLES[styleKey]) return;
+    currentStyle = styleKey;
+
+    const styleEl = document.getElementById('styleVal');
+    const styleSelectEl = document.getElementById('styleSelect');
+
+    if (styleEl) {
+        styleEl.innerText = SPEED_STYLES[currentStyle].displayName;
+        styleEl.className = currentStyle === 'classic' ? 'style-classic' : 'style-worms';
+    }
+    if (styleSelectEl && styleSelectEl.value !== currentStyle) {
+        styleSelectEl.value = currentStyle;
+    }
+}
+
+const styleSelect = document.getElementById('styleSelect');
+if (styleSelect) {
+    styleSelect.addEventListener('change', (e) => {
+        setSpeedStyle(e.target.value);
+    });
+}
+
+const touchSelect = document.getElementById('touchSelect');
+if (touchSelect) {
+    touchSelect.addEventListener('change', (e) => {
+        VirtualJoystick.setMode(e.target.value);
+    });
+}
 
 // FOV Slider Listener
 const fovSlider = document.getElementById('fovSlider');
@@ -508,6 +708,16 @@ applyDifficultySettings();
 window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
 
+    if (e.code === 'KeyT') {
+        // Toggle between Classic and Worms speed styles
+        const nextStyle = currentStyle === 'classic' ? 'worms' : 'classic';
+        setSpeedStyle(nextStyle);
+    }
+    if (e.code === 'KeyJ') {
+        // Toggle between Floating Joystick and DPad
+        const nextMode = VirtualJoystick.getMode() === 'joystick' ? 'dpad' : 'joystick';
+        VirtualJoystick.setMode(nextMode);
+    }
     if (e.code === 'KeyP') {
         if (!isCrashed) {
             isPaused = !isPaused;
@@ -544,19 +754,32 @@ window.addEventListener('keyup', (e) => {
 function handleShipInput(dt) {
     if (isCrashed || isPaused) return { speed: 0, dx: 0, dy: 0 };
 
-    const steerSpeed = 210 * dt;
+    const style = SPEED_STYLES[currentStyle];
+    hyperdrive = !!keys['Space'];
+
+    const steerSpeed = (hyperdrive ? style.steerSpeed * 1.35 : style.steerSpeed) * dt;
     let dx = 0;
     let dy = 0;
 
-    if (keys['KeyA'] || keys['ArrowLeft']) { shipOffsetX -= steerSpeed; dx -= steerSpeed; }
-    if (keys['KeyD'] || keys['ArrowRight']) { shipOffsetX += steerSpeed; dx += steerSpeed; }
-    if (keys['KeyW'] || keys['ArrowUp']) { shipOffsetY += steerSpeed; dy += steerSpeed; }
-    if (keys['KeyS'] || keys['ArrowDown']) { shipOffsetY -= steerSpeed; dy -= steerSpeed; }
+    // Keyboard / DPad Discrete Inputs
+    if (keys['KeyA'] || keys['ArrowLeft']) { dx -= steerSpeed; }
+    if (keys['KeyD'] || keys['ArrowRight']) { dx += steerSpeed; }
+    if (keys['KeyW'] || keys['ArrowUp']) { dy += steerSpeed; }
+    if (keys['KeyS'] || keys['ArrowDown']) { dy -= steerSpeed; }
 
-    hyperdrive = !!keys['Space'];
-    speedMultiplier = hyperdrive ? 2.5 : 1.0;
+    // Floating Analog Joystick (Mouse / Touch) Input
+    const joyVec = VirtualJoystick.getVector();
+    if (joyVec.x !== 0 || joyVec.y !== 0) {
+        dx += joyVec.x * steerSpeed;
+        dy += joyVec.y * steerSpeed;
+    }
 
-    return { speed: CONFIG.baseSpeed * speedMultiplier, dx, dy };
+    shipOffsetX += dx;
+    shipOffsetY += dy;
+
+    const speed = hyperdrive ? style.hyperSpeed : style.normalSpeed;
+
+    return { speed, dx, dy };
 }
 
 // -------------------------------------------------------------
@@ -740,4 +963,7 @@ function animate(currentTime) {
     requestAnimationFrame(animate);
 }
 
+// Initialise with Retro Classic speed style and Floating Joystick mode
+setSpeedStyle('classic');
+VirtualJoystick.setMode('joystick');
 requestAnimationFrame(animate);
