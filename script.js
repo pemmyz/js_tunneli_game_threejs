@@ -81,17 +81,21 @@ const VirtualJoystick = (function () {
     let activePointerId = null;
     let startX = 0;
     let startY = 0;
-    const maxRadius = 120; // Max thumb travel distance in px
 
     const vector = { x: 0, y: 0 };
     const joystickEl = document.getElementById('virtual-joystick');
     const thumbEl = joystickEl ? joystickEl.querySelector('.joystick-thumb') : null;
 
+    // 1.25x (75px) in fullscreen/mobile-mode, 2x (120px) otherwise
+    function getMaxRadius() {
+        const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.body.classList.contains('mobile-mode'));
+        return isFullscreen ? 75 : 120;
+    }
+
     function init() {
         const gameContainer = document.getElementById('game-container');
         if (!gameContainer) return;
 
-        // Pointer events support both mouse clicks and touchscreen touches
         gameContainer.addEventListener('pointerdown', onPointerDown, { passive: false });
         window.addEventListener('pointermove', onPointerMove, { passive: false });
         window.addEventListener('pointerup', onPointerUp, { passive: false });
@@ -100,12 +104,12 @@ const VirtualJoystick = (function () {
 
     function isInteractiveElement(target) {
         if (!target) return false;
-        return !!target.closest('#hud, #mobile-btn, #restart-btn, #mobile-controls, select, input, button, label, a');
+        return !!target.closest('#hud, #hud-header, #hud-toggle-btn, #mobile-btn, #restart-btn, #mobile-controls, select, input, button, label, a');
     }
 
     function onPointerDown(e) {
         if (mode !== 'joystick') return;
-        if (activePointerId !== null) return; // Already tracking an active pointer
+        if (activePointerId !== null) return;
         if (isInteractiveElement(e.target)) return;
 
         if (e.cancelable) e.preventDefault();
@@ -113,7 +117,6 @@ const VirtualJoystick = (function () {
         startX = e.clientX;
         startY = e.clientY;
 
-        // Appear centered at the exact touch / click location
         if (joystickEl) {
             joystickEl.style.left = `${startX}px`;
             joystickEl.style.top = `${startY}px`;
@@ -133,7 +136,6 @@ const VirtualJoystick = (function () {
 
         if (e.cancelable) e.preventDefault();
 
-        // Calculate offset vector relative to the touch press position
         const deltaX = e.clientX - startX;
         const deltaY = e.clientY - startY;
         const distance = Math.hypot(deltaX, deltaY);
@@ -145,7 +147,7 @@ const VirtualJoystick = (function () {
             return;
         }
 
-        // Clamp travel within outer base circle
+        const maxRadius = getMaxRadius();
         const clampedDist = Math.min(distance, maxRadius);
         const angle = Math.atan2(deltaY, deltaX);
 
@@ -156,10 +158,8 @@ const VirtualJoystick = (function () {
             thumbEl.style.transform = `translate(${thumbX}px, ${thumbY}px)`;
         }
 
-        // Output normalized vector from -1.0 to 1.0
         const strength = clampedDist / maxRadius;
         vector.x = Math.cos(angle) * strength;
-        // Invert Y so dragging upward steers ship upward
         vector.y = -(Math.sin(angle) * strength);
     }
 
@@ -270,6 +270,38 @@ window.addEventListener('fullscreenchange', updateFullscreenState);
 window.addEventListener('webkitfullscreenchange', updateFullscreenState);
 
 // -------------------------------------------------------------
+// Collapsible HUD Tab Toggle (Touch & Mouse Reliable)
+// -------------------------------------------------------------
+const hudEl = document.getElementById('hud');
+const hudHeaderEl = document.getElementById('hud-header');
+const hudToggleBtn = document.getElementById('hud-toggle-btn');
+
+function toggleHUDTab(e) {
+    if (e) {
+        e.stopPropagation();
+    }
+    if (!hudEl) return;
+    hudEl.classList.toggle('collapsed');
+    const isCollapsed = hudEl.classList.contains('collapsed');
+    if (hudToggleBtn) {
+        hudToggleBtn.innerText = isCollapsed ? '▼' : '▲';
+    }
+}
+
+// Initialise button state based on default collapsed class
+if (hudToggleBtn && hudEl) {
+    hudToggleBtn.innerText = hudEl.classList.contains('collapsed') ? '▼' : '▲';
+}
+
+if (hudHeaderEl) {
+    hudHeaderEl.addEventListener('click', toggleHUDTab);
+    hudHeaderEl.addEventListener('touchend', (e) => {
+        if (e.cancelable) e.preventDefault();
+        toggleHUDTab(e);
+    }, { passive: false });
+}
+
+// -------------------------------------------------------------
 // Multi-Touch Screen Controls (Old Style DPad)
 // -------------------------------------------------------------
 function setupMobileControls() {
@@ -289,12 +321,10 @@ function setupMobileControls() {
             keyCodes.forEach(k => keys[k] = false);
         };
 
-        // Touch events
         element.addEventListener('touchstart', press, { passive: false });
         element.addEventListener('touchend', release, { passive: false });
         element.addEventListener('touchcancel', release, { passive: false });
 
-        // Mouse events for testing
         element.addEventListener('mousedown', press);
         element.addEventListener('mouseup', release);
         element.addEventListener('mouseleave', () => {
@@ -302,11 +332,8 @@ function setupMobileControls() {
         });
     };
 
-    // Bottom Left: Left / Right
     addControlListener(mobileLeft, ['KeyA', 'ArrowLeft']);
     addControlListener(mobileRight, ['KeyD', 'ArrowRight']);
-
-    // Bottom Right: Up / Down
     addControlListener(mobileUp, ['KeyW', 'ArrowUp']);
     addControlListener(mobileDown, ['KeyS', 'ArrowDown']);
 }
@@ -709,14 +736,15 @@ window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
 
     if (e.code === 'KeyT') {
-        // Toggle between Classic and Worms speed styles
         const nextStyle = currentStyle === 'classic' ? 'worms' : 'classic';
         setSpeedStyle(nextStyle);
     }
     if (e.code === 'KeyJ') {
-        // Toggle between Floating Joystick and DPad
         const nextMode = VirtualJoystick.getMode() === 'joystick' ? 'dpad' : 'joystick';
         VirtualJoystick.setMode(nextMode);
+    }
+    if (e.code === 'KeyH') {
+        toggleHUDTab();
     }
     if (e.code === 'KeyP') {
         if (!isCrashed) {
@@ -739,9 +767,6 @@ window.addEventListener('keydown', (e) => {
         currentPaletteIdx = (currentPaletteIdx + 1) % PALETTES.length;
         document.getElementById('paletteName').innerText = PALETTES[currentPaletteIdx].name;
     }
-    if (e.code === 'KeyH') {
-        document.getElementById('hud').classList.toggle('hidden');
-    }
     if (e.code === 'KeyR' && isCrashed) {
         restartGame();
     }
@@ -757,7 +782,7 @@ function handleShipInput(dt) {
     const style = SPEED_STYLES[currentStyle];
     hyperdrive = !!keys['Space'];
 
-    const steerSpeed = (hyperdrive ? style.steerSpeed * 1.35 : style.steerSpeed) * dt;
+    const steerSpeed = (hyperdrive ? style.steerSpeed * 1.35 : style.steerSpeed) * 1.5 * dt;
     let dx = 0;
     let dy = 0;
 

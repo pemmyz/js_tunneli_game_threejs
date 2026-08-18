@@ -58,9 +58,10 @@ body.mobile-mode {
     cursor: pointer;
     backdrop-filter: blur(4px);
     transition: all 0.2s ease;
+    touch-action: manipulation;
 }
 
-#mobile-btn:hover {
+#mobile-btn:hover, #mobile-btn:active {
     background: #ff007f;
     color: #fff;
     border-color: #ff007f;
@@ -106,7 +107,8 @@ body.mobile-mode {
 }
 
 /* -------------------------------------------------------------
- * Floating Virtual Analog Joystick (2X Size)
+ * Floating Virtual Analog Joystick
+ * Default: 2X Size (Windowed)
  * ------------------------------------------------------------- */
 .joystick-container {
     position: fixed;
@@ -169,22 +171,55 @@ body.mobile-mode {
     will-change: transform;
 }
 
+/* Fullscreen / Mobile Mode: 1.25X Size */
+body.mobile-mode .joystick-base {
+    width: 188px;
+    height: 188px;
+    border-width: 2px;
+    box-shadow: 0 0 22px rgba(0, 255, 204, 0.35), inset 0 0 18px rgba(0, 255, 204, 0.2);
+}
+
+body.mobile-mode .joystick-ring {
+    width: 88px;
+    height: 88px;
+    border-width: 1.5px;
+}
+
+body.mobile-mode .joystick-thumb {
+    width: 70px;
+    height: 70px;
+    border-width: 2px;
+    box-shadow: 0 0 18px #00ffff, 0 0 28px rgba(255, 0, 127, 0.9), inset 0 0 10px rgba(255, 255, 255, 0.7);
+}
+
 /* -------------------------------------------------------------
- * HUD Overlay
+ * HUD Overlay & Collapsible Header
  * ------------------------------------------------------------- */
 #hud {
     position: absolute;
     top: 52px;
     left: 12px;
-    z-index: 2000;
-    background: rgba(5, 5, 16, 0.88);
+    z-index: 2200;
+    background: rgba(5, 5, 16, 0.92);
     border: 1px solid #00ffcc;
     box-shadow: 0 0 12px rgba(0, 255, 204, 0.3);
-    padding: 10px 12px;
+    padding: 8px 10px;
     border-radius: 4px;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(5px);
     width: 285px;
     pointer-events: auto;
+    touch-action: auto;
+    transition: width 0.2s ease, padding 0.2s ease, background 0.2s ease;
+}
+
+.hud-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    touch-action: manipulation;
+    padding: 2px 0;
 }
 
 .hud-title {
@@ -192,8 +227,64 @@ body.mobile-mode {
     font-weight: bold;
     color: #ff007f;
     text-shadow: 0 0 6px #ff007f;
-    margin-bottom: 6px;
     letter-spacing: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}
+
+/* Enlarged, touch-friendly toggle button */
+.hud-collapse-btn {
+    background: rgba(0, 255, 204, 0.2);
+    color: #00ffcc;
+    border: 1.5px solid #00ffcc;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: bold;
+    min-width: 34px;
+    height: 30px;
+    padding: 0 4px;
+    cursor: pointer;
+    outline: none;
+    line-height: 1;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    touch-action: manipulation;
+    pointer-events: auto;
+    box-shadow: 0 0 6px rgba(0, 255, 204, 0.3);
+    transition: all 0.15s ease;
+}
+
+.hud-collapse-btn:hover, .hud-collapse-btn:active {
+    background: #ff007f;
+    border-color: #ff007f;
+    color: #ffffff;
+    box-shadow: 0 0 10px #ff007f;
+}
+
+/* Collapsed State (Default) */
+#hud.collapsed {
+    width: auto;
+    min-width: 230px;
+    max-width: calc(100vw - 24px);
+    padding: 6px 10px;
+    background: rgba(5, 5, 16, 0.82);
+}
+
+#hud.collapsed #hud-body {
+    display: none !important;
+}
+
+#hud.collapsed .hud-header {
+    margin-bottom: 0;
+}
+
+#hud:not(.collapsed) .hud-header {
+    margin-bottom: 8px;
+    border-bottom: 1px dashed rgba(0, 255, 204, 0.3);
+    padding-bottom: 6px;
 }
 
 .hud-stats {
@@ -257,10 +348,11 @@ body.mobile-mode {
     border: 1px solid #00ffcc;
     font-family: inherit;
     font-size: 9.5px;
-    padding: 3px 5px;
+    padding: 4px 6px;
     border-radius: 3px;
     outline: none;
     cursor: pointer;
+    touch-action: manipulation;
 }
 
 .hud-select option {
@@ -272,6 +364,7 @@ body.mobile-mode {
     width: 100%;
     accent-color: #ff007f;
     cursor: pointer;
+    touch-action: manipulation;
 }
 
 .hud-controls {
@@ -338,6 +431,7 @@ body.mobile-mode {
     cursor: pointer;
     text-shadow: none;
     animation: pulse 1s infinite alternate;
+    touch-action: manipulation;
 }
 
 /* -------------------------------------------------------------
