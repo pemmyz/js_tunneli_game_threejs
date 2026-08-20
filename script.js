@@ -13,25 +13,25 @@ const CONFIG = {
     ringRadius: 260          // Base tunnel ring radius
 };
 
-// Speed Style Profiles (Retro Classic is default; Worms is the new style option)
+// Speed Style Profiles
 const SPEED_STYLES = {
     classic: {
         id: "classic",
         displayName: "RETRO CLASSIC",
         normalSpeed: 550,    // Default base speed
-        hyperSpeed: 1375,    // Classic hyper speed (550 * 2.5)
+        hyperSpeed: 1375,    // Classic hyper speed
         steerSpeed: 210
     },
     worms: {
         id: "worms",
         displayName: "WORMS (NEW)",
         normalSpeed: 180,    // Worms relaxed cruising speed
-        hyperSpeed: 550,     // Worms hyper speed (matches old normal speed)
+        hyperSpeed: 550,     // Worms hyper speed
         steerSpeed: 175
     }
 };
 
-let currentStyle = 'classic'; // Retro Classic is default
+let currentStyle = 'classic';
 
 const PALETTES = [
     { name: "NEON CYBER", rings: [0.83, 0.88, 0.5], cubes: [0.88, 0.14, 0.78], ship: 0.5 },
@@ -54,6 +54,11 @@ let score = 0;
 let shipDepth = 250;
 let cameraFov = 85;
 
+// Demo Mode State (Starts active)
+const DEMO_TIMEOUT = 7.0;
+let idleTimer = 0;
+let isDemoMode = true; // <--- Starts game with Demo Mode ACTIVE
+
 // Input & Controls State
 const keys = {};
 let shipOffsetX = 0;
@@ -74,10 +79,48 @@ renderer.setClearColor(0x030108, 1);
 container.appendChild(renderer.domElement);
 
 // -------------------------------------------------------------
-// Floating Virtual Analog Joystick Module (Mouse & Touchscreen)
+// Activity Tracker for Demo Mode
+// -------------------------------------------------------------
+function notifyUserActivity() {
+    idleTimer = 0;
+    if (isDemoMode) {
+        exitDemoMode();
+    }
+}
+
+function enterDemoMode() {
+    if (isDemoMode || isCrashed) return;
+    isDemoMode = true;
+    
+    document.getElementById('demo-overlay').classList.remove('hidden');
+    document.getElementById('demo-countdown').classList.add('hidden');
+    
+    const statusEl = document.getElementById('statusVal');
+    if (statusEl && !isPaused) {
+        statusEl.innerText = "DEMO MODE";
+        statusEl.className = "status-demo";
+    }
+}
+
+function exitDemoMode() {
+    isDemoMode = false;
+    idleTimer = 0;
+    
+    document.getElementById('demo-overlay').classList.add('hidden');
+    document.getElementById('demo-countdown').classList.remove('hidden');
+
+    const statusEl = document.getElementById('statusVal');
+    if (statusEl && !isPaused && !isCrashed) {
+        statusEl.innerText = "SURVIVING";
+        statusEl.className = "status-alive";
+    }
+}
+
+// -------------------------------------------------------------
+// Floating Virtual Analog Joystick Module
 // -------------------------------------------------------------
 const VirtualJoystick = (function () {
-    let mode = 'joystick'; // 'joystick' (default) or 'dpad'
+    let mode = 'joystick'; // 'joystick' or 'dpad'
     let activePointerId = null;
     let startX = 0;
     let startY = 0;
@@ -86,7 +129,6 @@ const VirtualJoystick = (function () {
     const joystickEl = document.getElementById('virtual-joystick');
     const thumbEl = joystickEl ? joystickEl.querySelector('.joystick-thumb') : null;
 
-    // 1.25x (75px) in fullscreen/mobile-mode, 2x (120px) otherwise
     function getMaxRadius() {
         const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.body.classList.contains('mobile-mode'));
         return isFullscreen ? 75 : 120;
@@ -96,10 +138,10 @@ const VirtualJoystick = (function () {
         const gameContainer = document.getElementById('game-container');
         if (!gameContainer) return;
 
-        gameContainer.addEventListener('pointerdown', onPointerDown, { passive: false });
-        window.addEventListener('pointermove', onPointerMove, { passive: false });
-        window.addEventListener('pointerup', onPointerUp, { passive: false });
-        window.addEventListener('pointercancel', onPointerUp, { passive: false });
+        gameContainer.addEventListener('pointerdown', onPointerDown);
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        window.addEventListener('pointercancel', onPointerUp);
     }
 
     function isInteractiveElement(target) {
@@ -108,11 +150,18 @@ const VirtualJoystick = (function () {
     }
 
     function onPointerDown(e) {
+        notifyUserActivity();
+
         if (mode !== 'joystick') return;
         if (activePointerId !== null) return;
         if (isInteractiveElement(e.target)) return;
 
-        if (e.cancelable) e.preventDefault();
+        if (pendingFullscreenFirstTap) {
+            pendingFullscreenFirstTap = false;
+            window.focus();
+            document.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+        }
+
         activePointerId = e.pointerId;
         startX = e.clientX;
         startY = e.clientY;
@@ -120,7 +169,7 @@ const VirtualJoystick = (function () {
         if (joystickEl) {
             joystickEl.style.left = `${startX}px`;
             joystickEl.style.top = `${startY}px`;
-            joystickEl.classList.remove('hidden');
+            joystickEl.classList.add('active');
         }
         if (thumbEl) {
             thumbEl.style.transform = 'translate(0px, 0px)';
@@ -134,7 +183,7 @@ const VirtualJoystick = (function () {
         if (mode !== 'joystick' || activePointerId === null) return;
         if (e.pointerId !== activePointerId) return;
 
-        if (e.cancelable) e.preventDefault();
+        notifyUserActivity();
 
         const deltaX = e.clientX - startX;
         const deltaY = e.clientY - startY;
@@ -167,11 +216,13 @@ const VirtualJoystick = (function () {
         if (mode !== 'joystick' || activePointerId === null) return;
         if (e.pointerId !== activePointerId) return;
 
+        notifyUserActivity();
+
         activePointerId = null;
         vector.x = 0;
         vector.y = 0;
 
-        if (joystickEl) joystickEl.classList.add('hidden');
+        if (joystickEl) joystickEl.classList.remove('active');
         if (thumbEl) thumbEl.style.transform = 'translate(0px, 0px)';
     }
 
@@ -181,7 +232,7 @@ const VirtualJoystick = (function () {
         vector.x = 0;
         vector.y = 0;
 
-        if (joystickEl) joystickEl.classList.add('hidden');
+        if (joystickEl) joystickEl.classList.remove('active');
 
         const dpadEl = document.getElementById('mobile-controls');
         if (dpadEl) {
@@ -225,6 +276,8 @@ VirtualJoystick.init();
 // -------------------------------------------------------------
 // Window Resize & Fullscreen Handling
 // -------------------------------------------------------------
+let pendingFullscreenFirstTap = false;
+
 function handleResize() {
     const width = window.innerWidth;
     const height = window.innerHeight;
@@ -241,18 +294,23 @@ function updateFullscreenState() {
     if (isFullscreen) {
         document.body.classList.add('mobile-mode');
         mobileToggleBtn.innerText = "✖ EXIT FULLSCREEN";
+        pendingFullscreenFirstTap = true;
     } else {
         document.body.classList.remove('mobile-mode');
         mobileToggleBtn.innerText = "📱 FULLSCREEN / TOUCH MODE";
+        pendingFullscreenFirstTap = false;
     }
     handleResize();
 }
 
 function toggleFullscreen() {
+    notifyUserActivity();
     if (!document.fullscreenElement && !document.webkitFullscreenElement) {
         const el = document.documentElement;
         if (el.requestFullscreen) {
-            el.requestFullscreen();
+            el.requestFullscreen({ navigationUI: 'hide' }).catch(() => {
+                el.requestFullscreen();
+            });
         } else if (el.webkitRequestFullscreen) {
             el.webkitRequestFullscreen();
         }
@@ -264,19 +322,19 @@ function toggleFullscreen() {
         }
     }
 }
-
 document.getElementById('mobile-btn').addEventListener('click', toggleFullscreen);
 window.addEventListener('fullscreenchange', updateFullscreenState);
 window.addEventListener('webkitfullscreenchange', updateFullscreenState);
 
 // -------------------------------------------------------------
-// Collapsible HUD Tab Toggle (Touch & Mouse Reliable)
+// Collapsible HUD Tab Toggle
 // -------------------------------------------------------------
 const hudEl = document.getElementById('hud');
 const hudHeaderEl = document.getElementById('hud-header');
 const hudToggleBtn = document.getElementById('hud-toggle-btn');
 
 function toggleHUDTab(e) {
+    notifyUserActivity();
     if (e) {
         e.stopPropagation();
     }
@@ -288,7 +346,6 @@ function toggleHUDTab(e) {
     }
 }
 
-// Initialise button state based on default collapsed class
 if (hudToggleBtn && hudEl) {
     hudToggleBtn.innerText = hudEl.classList.contains('collapsed') ? '▼' : '▲';
 }
@@ -302,7 +359,7 @@ if (hudHeaderEl) {
 }
 
 // -------------------------------------------------------------
-// Multi-Touch Screen Controls (Old Style DPad)
+// Multi-Touch Screen Controls (DPad)
 // -------------------------------------------------------------
 function setupMobileControls() {
     const mobileLeft = document.getElementById('mobile-left');
@@ -313,10 +370,12 @@ function setupMobileControls() {
     const addControlListener = (element, keyCodes) => {
         if (!element) return;
         const press = (e) => {
+            notifyUserActivity();
             if (e.cancelable) e.preventDefault();
             keyCodes.forEach(k => keys[k] = true);
         };
         const release = (e) => {
+            notifyUserActivity();
             if (e.cancelable) e.preventDefault();
             keyCodes.forEach(k => keys[k] = false);
         };
@@ -362,6 +421,7 @@ function setSpeedStyle(styleKey) {
 const styleSelect = document.getElementById('styleSelect');
 if (styleSelect) {
     styleSelect.addEventListener('change', (e) => {
+        notifyUserActivity();
         setSpeedStyle(e.target.value);
     });
 }
@@ -369,28 +429,29 @@ if (styleSelect) {
 const touchSelect = document.getElementById('touchSelect');
 if (touchSelect) {
     touchSelect.addEventListener('change', (e) => {
+        notifyUserActivity();
         VirtualJoystick.setMode(e.target.value);
     });
 }
 
-// FOV Slider Listener
 const fovSlider = document.getElementById('fovSlider');
 const fovVal = document.getElementById('fovVal');
 fovSlider.addEventListener('input', (e) => {
+    notifyUserActivity();
     cameraFov = parseFloat(e.target.value);
     fovVal.innerText = cameraFov;
     camera.fov = cameraFov;
     camera.updateProjectionMatrix();
 });
 
-// Depth Slider Listener
 const depthSlider = document.getElementById('depthSlider');
 depthSlider.addEventListener('input', (e) => {
+    notifyUserActivity();
     shipDepth = parseFloat(e.target.value);
 });
 
-// Restart button listener for mobile / click
 document.getElementById('restart-btn').addEventListener('click', () => {
+    notifyUserActivity();
     if (isCrashed) restartGame();
 });
 
@@ -733,6 +794,7 @@ applyDifficultySettings();
 // Controls & Keyboard Inputs
 // -------------------------------------------------------------
 window.addEventListener('keydown', (e) => {
+    notifyUserActivity();
     keys[e.code] = true;
 
     if (e.code === 'KeyT') {
@@ -754,8 +816,8 @@ window.addEventListener('keydown', (e) => {
                 statusEl.innerText = "PAUSED";
                 statusEl.className = "status-paused";
             } else {
-                statusEl.innerText = "SURVIVING";
-                statusEl.className = "status-alive";
+                statusEl.innerText = isDemoMode ? "DEMO MODE" : "SURVIVING";
+                statusEl.className = isDemoMode ? "status-demo" : "status-alive";
             }
         }
     }
@@ -773,6 +835,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 window.addEventListener('keyup', (e) => {
+    notifyUserActivity();
     keys[e.code] = false;
 });
 
@@ -780,23 +843,40 @@ function handleShipInput(dt) {
     if (isCrashed || isPaused) return { speed: 0, dx: 0, dy: 0 };
 
     const style = SPEED_STYLES[currentStyle];
+
+    // Autopilot flight maneuver in Demo Mode
+    if (isDemoMode) {
+        const demoSpeed = style.normalSpeed * 1.15;
+        const targetDemoX = Math.sin(time * 1.4) * (CONFIG.ringRadius * 0.45) + Math.cos(time * 0.7) * 35;
+        const targetDemoY = Math.cos(time * 1.6) * (CONFIG.ringRadius * 0.45) + Math.sin(time * 0.9) * 25;
+        
+        const dx = (targetDemoX - shipOffsetX) * dt * 4.0;
+        const dy = (targetDemoY - shipOffsetY) * dt * 4.0;
+
+        shipOffsetX += dx;
+        shipOffsetY += dy;
+
+        return { speed: demoSpeed, dx, dy };
+    }
+
     hyperdrive = !!keys['Space'];
 
-    const steerSpeed = (hyperdrive ? style.steerSpeed * 1.35 : style.steerSpeed) * 1.5 * dt;
+    const steerSpeed = (hyperdrive ? style.steerSpeed * 1.35 : style.steerSpeed) * dt;
     let dx = 0;
     let dy = 0;
 
-    // Keyboard / DPad Discrete Inputs
-    if (keys['KeyA'] || keys['ArrowLeft']) { dx -= steerSpeed; }
-    if (keys['KeyD'] || keys['ArrowRight']) { dx += steerSpeed; }
-    if (keys['KeyW'] || keys['ArrowUp']) { dy += steerSpeed; }
-    if (keys['KeyS'] || keys['ArrowDown']) { dy -= steerSpeed; }
+    // Keyboard / DPad Inputs
+    if (keys['KeyA'] || keys['ArrowLeft']) { dx -= steerSpeed; notifyUserActivity(); }
+    if (keys['KeyD'] || keys['ArrowRight']) { dx += steerSpeed; notifyUserActivity(); }
+    if (keys['KeyW'] || keys['ArrowUp']) { dy += steerSpeed; notifyUserActivity(); }
+    if (keys['KeyS'] || keys['ArrowDown']) { dy -= steerSpeed; notifyUserActivity(); }
 
-    // Floating Analog Joystick (Mouse / Touch) Input
+    // Floating Analog Joystick Input
     const joyVec = VirtualJoystick.getVector();
     if (joyVec.x !== 0 || joyVec.y !== 0) {
         dx += joyVec.x * steerSpeed;
         dy += joyVec.y * steerSpeed;
+        notifyUserActivity();
     }
 
     shipOffsetX += dx;
@@ -811,7 +891,7 @@ function handleShipInput(dt) {
 // Damage & Collision Handling
 // -------------------------------------------------------------
 function takeDamage(amount, scorePenalty, reason) {
-    if (invulnerableTimer > 0) return;
+    if (invulnerableTimer > 0 || isDemoMode) return;
 
     if (easyMode) {
         playerHealth -= amount;
@@ -850,7 +930,7 @@ function updateHUDHealth() {
 }
 
 function checkCollisions(time) {
-    if (isCrashed || isPaused) return;
+    if (isCrashed || isPaused || isDemoMode) return; // Immune in Demo Mode
 
     const shipZ = -shipDepth;
     const shipCenter = getTunnelCenter(shipZ, time);
@@ -891,12 +971,14 @@ function checkCollisions(time) {
 
 function triggerCrash(reason) {
     isCrashed = true;
+    exitDemoMode();
     document.querySelector('.vignette').classList.add('red-flash');
     document.getElementById('statusVal').innerText = "CRASHED";
     document.getElementById('statusVal').className = "status-crashed";
 
     document.getElementById('finalScore').innerText = Math.floor(score);
     document.getElementById('crash-overlay').classList.remove('hidden');
+    document.getElementById('demo-countdown').classList.add('hidden');
 }
 
 function restartGame() {
@@ -907,6 +989,7 @@ function restartGame() {
     invulnerableTimer = 0;
     shipOffsetX = 0;
     shipOffsetY = 0;
+    idleTimer = 0;
 
     playerShip.group.visible = true;
     updateHUDHealth();
@@ -915,6 +998,7 @@ function restartGame() {
     document.getElementById('statusVal').innerText = "SURVIVING";
     document.getElementById('statusVal').className = "status-alive";
     document.getElementById('crash-overlay').classList.add('hidden');
+    document.getElementById('demo-countdown').classList.remove('hidden');
 
     cubes.forEach((cube) => {
         const z = -(CONFIG.minDepth + Math.random() * (CONFIG.maxDepth - CONFIG.minDepth));
@@ -933,6 +1017,20 @@ function animate(currentTime) {
         renderer.render(scene, camera);
         requestAnimationFrame(animate);
         return;
+    }
+
+    // Demo Mode Inactivity Timer & Countdown Update
+    if (!isCrashed && !isPaused) {
+        if (!isDemoMode) {
+            idleTimer += dt;
+            const remaining = Math.max(0, Math.ceil(DEMO_TIMEOUT - idleTimer));
+            const countValEl = document.getElementById('countdown-val');
+            if (countValEl) countValEl.innerText = remaining;
+
+            if (idleTimer >= DEMO_TIMEOUT) {
+                enterDemoMode();
+            }
+        }
     }
 
     time += dt;
@@ -955,7 +1053,7 @@ function animate(currentTime) {
 
     const { speed, dx, dy } = handleShipInput(dt);
 
-    if (!isCrashed) {
+    if (!isCrashed && !isDemoMode) {
         score += dt * (speed / 10);
         document.getElementById('scoreVal').innerText = Math.floor(score);
     }
@@ -988,7 +1086,7 @@ function animate(currentTime) {
     requestAnimationFrame(animate);
 }
 
-// Initialise with Retro Classic speed style and Floating Joystick mode
+// Initialise settings and start loop in Demo Mode
 setSpeedStyle('classic');
 VirtualJoystick.setMode('joystick');
 requestAnimationFrame(animate);

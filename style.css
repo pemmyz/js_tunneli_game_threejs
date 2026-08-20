@@ -5,6 +5,7 @@
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 html, body {
@@ -68,6 +69,77 @@ body.mobile-mode {
     box-shadow: 0 0 14px rgba(255, 0, 127, 0.6);
 }
 
+/* Demo Mode Countdown Banner */
+.demo-countdown-container {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 2300;
+    background: rgba(5, 5, 16, 0.85);
+    border: 1px solid #ffcc00;
+    box-shadow: 0 0 10px rgba(255, 204, 0, 0.4);
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    color: #ffcc00;
+    backdrop-filter: blur(4px);
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 1px;
+    transition: opacity 0.25s ease;
+}
+
+.countdown-timer {
+    color: #00ffcc;
+    font-size: 13px;
+    text-shadow: 0 0 6px #00ffcc;
+}
+
+/* Demo Mode Center Screen Overlay */
+#demo-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2600;
+    text-align: center;
+    background: rgba(5, 3, 16, 0.88);
+    border: 2px solid #00ffcc;
+    box-shadow: 0 0 35px rgba(0, 255, 204, 0.6), inset 0 0 25px rgba(255, 0, 127, 0.4);
+    padding: 24px 34px;
+    border-radius: 8px;
+    backdrop-filter: blur(6px);
+    pointer-events: none;
+    animation: pulse 1.8s infinite alternate;
+}
+
+.demo-title {
+    font-size: 28px;
+    font-weight: 900;
+    color: #00ffcc;
+    text-shadow: 0 0 18px #00ffcc, 0 0 30px #ff007f;
+    letter-spacing: 3px;
+    margin-bottom: 12px;
+    animation: blink 0.9s infinite alternate;
+}
+
+.demo-prompt {
+    font-size: 13px;
+    color: #ffcc00;
+    letter-spacing: 1.5px;
+    text-shadow: 0 0 8px #ffcc00;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    background: rgba(255, 204, 0, 0.1);
+    padding: 6px 14px;
+    border-radius: 4px;
+    border: 1px dashed rgba(255, 204, 0, 0.5);
+    display: inline-block;
+}
+
 /* Retro CRT Scanlines Effect */
 .crt-overlay {
     position: absolute;
@@ -106,17 +178,21 @@ body.mobile-mode {
     background-color: rgba(255, 0, 0, 0.35);
 }
 
-/* -------------------------------------------------------------
- * Floating Virtual Analog Joystick
- * Default: 2X Size (Windowed)
- * ------------------------------------------------------------- */
+/* Floating Virtual Analog Joystick */
 .joystick-container {
     position: fixed;
     pointer-events: none;
     z-index: 2800;
     transform: translate(-50%, -50%);
-    will-change: transform, left, top;
-    transition: opacity 0.15s ease-out;
+    will-change: transform, left, top, opacity;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.1s ease-out;
+}
+
+.joystick-container.active {
+    opacity: 1;
+    visibility: visible;
 }
 
 .joystick-base {
@@ -192,9 +268,7 @@ body.mobile-mode .joystick-thumb {
     box-shadow: 0 0 18px #00ffff, 0 0 28px rgba(255, 0, 127, 0.9), inset 0 0 10px rgba(255, 255, 255, 0.7);
 }
 
-/* -------------------------------------------------------------
- * HUD Overlay & Collapsible Header
- * ------------------------------------------------------------- */
+/* HUD Overlay & Collapsible Header */
 #hud {
     position: absolute;
     top: 52px;
@@ -234,7 +308,6 @@ body.mobile-mode .joystick-thumb {
     pointer-events: none;
 }
 
-/* Enlarged, touch-friendly toggle button */
 .hud-collapse-btn {
     background: rgba(0, 255, 204, 0.2);
     color: #00ffcc;
@@ -264,7 +337,6 @@ body.mobile-mode .joystick-thumb {
     box-shadow: 0 0 10px #ff007f;
 }
 
-/* Collapsed State (Default) */
 #hud.collapsed {
     width: auto;
     min-width: 230px;
@@ -315,6 +387,7 @@ body.mobile-mode .joystick-thumb {
 }
 
 .status-alive { color: #00ffcc; font-weight: bold; }
+.status-demo { color: #00ffff; font-weight: bold; animation: blink 0.7s infinite alternate; }
 .status-paused {
     color: #ffcc00;
     font-weight: bold;
@@ -434,9 +507,7 @@ body.mobile-mode .joystick-thumb {
     touch-action: manipulation;
 }
 
-/* -------------------------------------------------------------
- * 2X Touch Screen Controls (Old Style D-Pad)
- * ------------------------------------------------------------- */
+/* Mobile Touch D-Pad */
 #mobile-controls {
     position: fixed;
     top: 0;
@@ -511,6 +582,6 @@ body.mobile-mode .joystick-thumb {
 }
 
 @keyframes pulse {
-    0% { transform: scale(1); }
-    100% { transform: scale(1.06); }
+    0% { transform: translate(-50%, -50%) scale(1); }
+    100% { transform: translate(-50%, -50%) scale(1.04); }
 }

@@ -13,6 +13,12 @@
     <!-- Fullscreen / Mobile Mode Button in Top Left -->
     <button id="mobile-btn">📱 FULLSCREEN / TOUCH MODE</button>
 
+    <!-- Demo Mode Countdown Badge (Hidden initially while in Demo Mode) -->
+    <div id="demo-countdown" class="demo-countdown-container hidden">
+        <span class="countdown-label">AUTO-DEMO IN:</span>
+        <span id="countdown-val" class="countdown-timer">7</span>s
+    </div>
+
     <!-- Game Screen filling whole window -->
     <div id="game-container">
         <div id="screen">
@@ -23,14 +29,20 @@
             <div class="crt-overlay"></div>
             <div class="vignette"></div>
 
-            <!-- Floating Virtual Analog Joystick (Appears at touch/click position) -->
-            <div id="virtual-joystick" class="joystick-container hidden">
+            <!-- Floating Virtual Analog Joystick -->
+            <div id="virtual-joystick" class="joystick-container">
                 <div class="joystick-base">
                     <div class="joystick-ring"></div>
                     <div class="joystick-crosshair-h"></div>
                     <div class="joystick-crosshair-v"></div>
                     <div class="joystick-thumb"></div>
                 </div>
+            </div>
+
+            <!-- Demo Mode Active Center Screen Overlay (Visible at Startup) -->
+            <div id="demo-overlay">
+                <div class="demo-title">DEMO MODE ACTIVE</div>
+                <div class="demo-prompt">_&gt; press any key to start playing</div>
             </div>
 
             <!-- HUD Overlay - Collapsed / Hidden by default -->
@@ -45,7 +57,7 @@
                         <div>STYLE: <span id="styleVal" class="style-classic">RETRO CLASSIC</span></div>
                         <div>CONTROL: <span id="touchVal" class="touch-joystick">FLOATING JOYSTICK</span></div>
                         <div>MODE: <span id="modeVal" class="mode-easy">EASY</span></div>
-                        <div>STATUS: <span id="statusVal" class="status-alive">SURVIVING</span></div>
+                        <div>STATUS: <span id="statusVal" class="status-demo">DEMO MODE</span></div>
                         <div>SHIELD / HP: <span id="healthVal" class="health-high">100%</span></div>
                         <div>SCORE: <span id="scoreVal">0</span></div>
                         <div>FPS: <span id="fps">60</span></div>
@@ -103,7 +115,7 @@
         </div>
     </div>
 
-    <!-- Old Style Mobile Touch D-Pad (Hidden by default in Joystick mode) -->
+    <!-- Old Style Mobile Touch D-Pad -->
     <div id="mobile-controls" class="hidden">
         <!-- Bottom Left: Left & Right -->
         <div id="mobile-dpad">
