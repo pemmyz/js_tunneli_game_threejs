@@ -538,14 +538,10 @@ Built with:
 
 The visual direction is inspired by classic **retro demoscene**, wireframe graphics, CRT displays, neon arcade games, and early 3D computer graphics.
 
+---
+
 ## License
 
-No license information is currently specified for this project.
+MIT License – free to use, modify, and redistribute.
 
-If you plan to distribute the project publicly, add an appropriate license file such as:
-
-```text
-LICENSE
-```
-
-and update this section accordingly.
+---
