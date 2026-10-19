@@ -3,15 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Retro Demoscene 3D Tunnel - Spaceship Dodge</title>
+    <title>Retro Demoscene 3D Tunnel - Spaceship Dodge & Blaster</title>
     <link rel="stylesheet" href="style.css">
     <!-- Three.js CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
+    <!-- Main Menu Overlay -->
+    <div id="main-menu-overlay">
+        <div class="menu-card">
+            <h1 class="menu-title">RETRO TUNNEL ENGINE</h1>
+            <p class="menu-subtitle">// SELECT MISSION PROTOCOL //</p>
+            <div class="menu-options">
+                <button id="mode-original-btn" class="menu-btn">
+                    <span class="btn-num">[1]</span> ORIGINAL DODGE RUNNER
+                    <span class="btn-desc">Pure avoidance - no weapons, survival only</span>
+                </button>
+                <button id="mode-shoot-btn" class="menu-btn menu-btn-primary">
+                    <span class="btn-num">[2]</span> TUNNEL BLASTER (SHOOT MODE)
+                    <span class="btn-desc">Armed plasma cannons - blast obstacles away!</span>
+                </button>
+            </div>
+            <div class="menu-hint">PRESS [1] OR [2] &bull; [M] OPENS MENU AT ANY TIME</div>
+        </div>
+    </div>
+
     <!-- Fullscreen / Mobile Mode Button in Top Left -->
     <button id="mobile-btn">📱 FULLSCREEN / TOUCH MODE</button>
+
+    <!-- On-screen Fire Button (Active in Shoot Mode) -->
+    <button id="mobile-shoot-btn" class="mobile-shoot-btn hidden">⚡ FIRE</button>
 
     <!-- Demo Mode Countdown Badge (Hidden initially while in Demo Mode) -->
     <div id="demo-countdown" class="demo-countdown-container hidden">
@@ -45,18 +67,22 @@
                 <div class="demo-prompt">_&gt; press any key to start playing</div>
             </div>
 
-            <!-- HUD Overlay - Collapsed / Hidden by default -->
+            <!-- HUD Overlay - Collapsed by default -->
             <div id="hud" class="collapsed">
                 <div id="hud-header" class="hud-header">
-                    <span class="hud-title">SYS // DEMO_TUNNEL_RUNNER.EXE</span>
-                    <button id="hud-toggle-btn" class="hud-collapse-btn" aria-label="Toggle HUD Window">▼</button>
+                    <span class="hud-title">SYS // TUNNEL_RUNNER.EXE</span>
+                    <div style="display:flex; gap:6px;">
+                        <button id="hud-menu-btn" class="hud-collapse-btn" title="Open Mode Menu">☰</button>
+                        <button id="hud-toggle-btn" class="hud-collapse-btn" aria-label="Toggle HUD Window">▼</button>
+                    </div>
                 </div>
 
                 <div id="hud-body">
                     <div class="hud-stats">
+                        <div>TYPE: <span id="gameTypeVal" class="mode-shoot">TUNNEL BLASTER</span></div>
                         <div>STYLE: <span id="styleVal" class="style-classic">RETRO CLASSIC</span></div>
                         <div>CONTROL: <span id="touchVal" class="touch-joystick">FLOATING JOYSTICK</span></div>
-                        <div>MODE: <span id="modeVal" class="mode-easy">EASY</span></div>
+                        <div>DIFFICULTY: <span id="modeVal" class="mode-easy">EASY</span></div>
                         <div>STATUS: <span id="statusVal" class="status-demo">DEMO MODE</span></div>
                         <div>SHIELD / HP: <span id="healthVal" class="health-high">100%</span></div>
                         <div>SCORE: <span id="scoreVal">0</span></div>
@@ -96,11 +122,13 @@
                     </div>
 
                     <div class="hud-controls">
+                        <p><strong>[F] / [X] / [FIRE BTN]</strong> Fire Lasers (Blaster Mode)</p>
                         <p><strong>[CLICK/TOUCH & DRAG]</strong> Floating Analog Joystick</p>
                         <p><strong>[W/A/S/D]</strong> or <strong>[ARROWS]</strong> Steer Ship</p>
                         <p><strong>[SPACE]</strong> Hyperdrive | <strong>[T]</strong> Speed Style</p>
-                        <p><strong>[J]</strong> Joystick / DPad | <strong>[E]</strong> Difficulty</p>
-                        <p><strong>[P]</strong> Pause | <strong>[C]</strong> Palette | <strong>[H]</strong> Toggle HUD</p>
+                        <p><strong>[M]</strong> Main Menu | <strong>[E]</strong> Difficulty</p>
+                        <p><strong>[J]</strong> Joystick / DPad | <strong>[P]</strong> Pause</p>
+                        <p><strong>[C]</strong> Palette | <strong>[H]</strong> Toggle HUD</p>
                     </div>
                 </div>
             </div>

@@ -1,5 +1,5 @@
 /**
- * RETRO DEMOSCENE 3D TUNNEL ENGINE - DODGE GAME
+ * RETRO DEMOSCENE 3D TUNNEL ENGINE - DODGE & BLASTER GAME
  */
 
 // Configuration & Global Settings
@@ -44,6 +44,13 @@ const PALETTES = [
 let currentPaletteIdx = 0;
 let hyperdrive = false;
 
+// Game Modes & Menu State
+let gameType = 'shoot';      // 'shoot' (Tunnel Blaster) or 'original' (Dodge Only)
+let isMenuOpen = true;        // Starts open with the Main Menu
+let shootCooldown = 0;
+const SHOOT_RATE = 0.16;      // Time between laser bursts in seconds
+const projectiles = [];
+
 // Game & Health State
 let easyMode = true;
 let isPaused = false;
@@ -57,7 +64,7 @@ let cameraFov = 85;
 // Demo Mode State (Starts active)
 const DEMO_TIMEOUT = 7.0;
 let idleTimer = 0;
-let isDemoMode = true; // <--- Starts game with Demo Mode ACTIVE
+let isDemoMode = true;
 
 // Input & Controls State
 const keys = {};
@@ -89,12 +96,12 @@ function notifyUserActivity() {
 }
 
 function enterDemoMode() {
-    if (isDemoMode || isCrashed) return;
+    if (isDemoMode || isCrashed || isMenuOpen) return;
     isDemoMode = true;
-    
+
     document.getElementById('demo-overlay').classList.remove('hidden');
     document.getElementById('demo-countdown').classList.add('hidden');
-    
+
     const statusEl = document.getElementById('statusVal');
     if (statusEl && !isPaused) {
         statusEl.innerText = "DEMO MODE";
@@ -105,9 +112,11 @@ function enterDemoMode() {
 function exitDemoMode() {
     isDemoMode = false;
     idleTimer = 0;
-    
+
     document.getElementById('demo-overlay').classList.add('hidden');
-    document.getElementById('demo-countdown').classList.remove('hidden');
+    if (!isMenuOpen) {
+        document.getElementById('demo-countdown').classList.remove('hidden');
+    }
 
     const statusEl = document.getElementById('statusVal');
     if (statusEl && !isPaused && !isCrashed) {
@@ -146,13 +155,13 @@ const VirtualJoystick = (function () {
 
     function isInteractiveElement(target) {
         if (!target) return false;
-        return !!target.closest('#hud, #hud-header, #hud-toggle-btn, #mobile-btn, #restart-btn, #mobile-controls, select, input, button, label, a');
+        return !!target.closest('#hud, #hud-header, #hud-toggle-btn, #hud-menu-btn, #mobile-btn, #restart-btn, #mobile-controls, #mobile-shoot-btn, #main-menu-overlay, select, input, button, label, a');
     }
 
     function onPointerDown(e) {
         notifyUserActivity();
 
-        if (mode !== 'joystick') return;
+        if (mode !== 'joystick' || isMenuOpen) return;
         if (activePointerId !== null) return;
         if (isInteractiveElement(e.target)) return;
 
@@ -335,9 +344,7 @@ const hudToggleBtn = document.getElementById('hud-toggle-btn');
 
 function toggleHUDTab(e) {
     notifyUserActivity();
-    if (e) {
-        e.stopPropagation();
-    }
+    if (e) e.stopPropagation();
     if (!hudEl) return;
     hudEl.classList.toggle('collapsed');
     const isCollapsed = hudEl.classList.contains('collapsed');
@@ -350,12 +357,66 @@ if (hudToggleBtn && hudEl) {
     hudToggleBtn.innerText = hudEl.classList.contains('collapsed') ? '▼' : '▲';
 }
 
-if (hudHeaderEl) {
-    hudHeaderEl.addEventListener('click', toggleHUDTab);
-    hudHeaderEl.addEventListener('touchend', (e) => {
-        if (e.cancelable) e.preventDefault();
-        toggleHUDTab(e);
-    }, { passive: false });
+if (hudToggleBtn) {
+    hudToggleBtn.addEventListener('click', toggleHUDTab);
+}
+
+// -------------------------------------------------------------
+// Main Menu & Game Mode Switching
+// -------------------------------------------------------------
+function setGameType(type) {
+    gameType = type;
+    isMenuOpen = false;
+
+    document.getElementById('main-menu-overlay').classList.add('hidden');
+
+    const shootBtn = document.getElementById('mobile-shoot-btn');
+    if (shootBtn) {
+        if (gameType === 'shoot') {
+            shootBtn.classList.remove('hidden');
+        } else {
+            shootBtn.classList.add('hidden');
+        }
+    }
+
+    const typeEl = document.getElementById('gameTypeVal');
+    if (typeEl) {
+        typeEl.innerText = gameType === 'shoot' ? 'TUNNEL BLASTER' : 'ORIGINAL DODGE';
+        typeEl.className = gameType === 'shoot' ? 'mode-shoot' : 'mode-dodge';
+    }
+
+    restartGame();
+    exitDemoMode();
+}
+
+function toggleMainMenu() {
+    isMenuOpen = !isMenuOpen;
+    const menuEl = document.getElementById('main-menu-overlay');
+    if (isMenuOpen) {
+        menuEl.classList.remove('hidden');
+        document.getElementById('demo-countdown').classList.add('hidden');
+    } else {
+        menuEl.classList.add('hidden');
+        if (!isDemoMode && !isCrashed) {
+            document.getElementById('demo-countdown').classList.remove('hidden');
+        }
+    }
+}
+
+document.getElementById('mode-original-btn').addEventListener('click', () => setGameType('original'));
+document.getElementById('mode-shoot-btn').addEventListener('click', () => setGameType('shoot'));
+document.getElementById('hud-menu-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleMainMenu();
+});
+
+const mobileShootBtn = document.getElementById('mobile-shoot-btn');
+if (mobileShootBtn) {
+    mobileShootBtn.addEventListener('pointerdown', (e) => {
+        notifyUserActivity();
+        e.stopPropagation();
+        fireWeapon();
+    });
 }
 
 // -------------------------------------------------------------
@@ -752,6 +813,120 @@ class SpeedParticles {
 }
 
 // -------------------------------------------------------------
+// Laser Projectile Class (Tunnel Blaster Mode)
+// -------------------------------------------------------------
+class LaserBeam {
+    constructor(startX, startY, startZ, speedZ) {
+        this.offsetX = startX;
+        this.offsetY = startY;
+        this.z = startZ;
+        this.speedZ = speedZ;
+        this.alive = true;
+        this.length = 75;
+
+        const geo = new THREE.BufferGeometry();
+        const positions = new Float32Array(6);
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        this.material = new THREE.LineBasicMaterial({
+            color: 0x00ffff,
+            linewidth: 3,
+            transparent: true,
+            opacity: 1.0,
+            blending: THREE.AdditiveBlending
+        });
+
+        this.line = new THREE.LineSegments(geo, this.material);
+        scene.add(this.line);
+    }
+
+    update(dt, time) {
+        this.z -= this.speedZ * dt; // Fires deeper forward into tunnel
+
+        if (this.z < -CONFIG.maxDepth) {
+            this.destroy();
+            return;
+        }
+
+        const center1 = getTunnelCenter(this.z, time);
+        const center2 = getTunnelCenter(this.z - this.length, time);
+
+        const x1 = center1.x + this.offsetX;
+        const y1 = center1.y + this.offsetY;
+        const x2 = center2.x + this.offsetX;
+        const y2 = center2.y + this.offsetY;
+
+        const pos = this.line.geometry.attributes.position;
+        pos.setXYZ(0, x1, y1, this.z);
+        pos.setXYZ(1, x2, y2, this.z - this.length);
+        pos.needsUpdate = true;
+    }
+
+    destroy() {
+        if (!this.alive) return;
+        this.alive = false;
+        scene.remove(this.line);
+        this.line.geometry.dispose();
+        this.line.material.dispose();
+    }
+}
+
+function fireWeapon() {
+    if (gameType !== 'shoot' || isPaused || isCrashed || shootCooldown > 0) return;
+
+    const wingSpread = 16;
+    projectiles.push(new LaserBeam(shipOffsetX - wingSpread, shipOffsetY - 2, -shipDepth, 2800));
+    projectiles.push(new LaserBeam(shipOffsetX + wingSpread, shipOffsetY - 2, -shipDepth, 2800));
+
+    shootCooldown = SHOOT_RATE;
+}
+
+function updateProjectiles(dt, time) {
+    if (shootCooldown > 0) {
+        shootCooldown -= dt;
+    }
+
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+        const p = projectiles[i];
+        p.update(dt, time);
+
+        if (!p.alive) {
+            projectiles.splice(i, 1);
+            continue;
+        }
+
+        // Collision detection: lasers vs obstacle cubes
+        for (let cube of cubes) {
+            const zDist = Math.abs(cube.z - p.z);
+            if (zDist < cube.size * 1.5 + 45) {
+                const cubeCenter = getTunnelCenter(cube.z, time);
+                const cubeX = cubeCenter.x + cube.offsetX;
+                const cubeY = cubeCenter.y + cube.offsetY;
+
+                const laserCenter = getTunnelCenter(p.z, time);
+                const laserX = laserCenter.x + p.offsetX;
+                const laserY = laserCenter.y + p.offsetY;
+
+                const hitDist = Math.hypot(cubeX - laserX, cubeY - laserY);
+
+                if (hitDist < cube.size * 1.35) {
+                    // Destroy cube by resetting back to tunnel end
+                    cube.reset(-CONFIG.maxDepth);
+                    p.destroy();
+                    projectiles.splice(i, 1);
+
+                    if (!isDemoMode && !isCrashed) {
+                        score += 75;
+                        document.getElementById('scoreVal').innerText = Math.floor(score);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+}
+
+// -------------------------------------------------------------
 // Instantiate Objects
 // -------------------------------------------------------------
 const playerShip = new PlayerShip();
@@ -797,6 +972,17 @@ window.addEventListener('keydown', (e) => {
     notifyUserActivity();
     keys[e.code] = true;
 
+    if (isMenuOpen) {
+        if (e.code === 'Digit1') setGameType('original');
+        if (e.code === 'Digit2') setGameType('shoot');
+    }
+
+    if ((e.code === 'KeyF' || e.code === 'KeyX') && gameType === 'shoot') {
+        fireWeapon();
+    }
+    if (e.code === 'KeyM') {
+        toggleMainMenu();
+    }
     if (e.code === 'KeyT') {
         const nextStyle = currentStyle === 'classic' ? 'worms' : 'classic';
         setSpeedStyle(nextStyle);
@@ -809,7 +995,7 @@ window.addEventListener('keydown', (e) => {
         toggleHUDTab();
     }
     if (e.code === 'KeyP') {
-        if (!isCrashed) {
+        if (!isCrashed && !isMenuOpen) {
             isPaused = !isPaused;
             const statusEl = document.getElementById('statusVal');
             if (isPaused) {
@@ -849,7 +1035,7 @@ function handleShipInput(dt) {
         const demoSpeed = style.normalSpeed * 1.15;
         const targetDemoX = Math.sin(time * 1.4) * (CONFIG.ringRadius * 0.45) + Math.cos(time * 0.7) * 35;
         const targetDemoY = Math.cos(time * 1.6) * (CONFIG.ringRadius * 0.45) + Math.sin(time * 0.9) * 25;
-        
+
         const dx = (targetDemoX - shipOffsetX) * dt * 4.0;
         const dy = (targetDemoY - shipOffsetY) * dt * 4.0;
 
@@ -891,7 +1077,7 @@ function handleShipInput(dt) {
 // Damage & Collision Handling
 // -------------------------------------------------------------
 function takeDamage(amount, scorePenalty, reason) {
-    if (invulnerableTimer > 0 || isDemoMode) return;
+    if (invulnerableTimer > 0 || isDemoMode || isMenuOpen) return;
 
     if (easyMode) {
         playerHealth -= amount;
@@ -930,7 +1116,7 @@ function updateHUDHealth() {
 }
 
 function checkCollisions(time) {
-    if (isCrashed || isPaused || isDemoMode) return; // Immune in Demo Mode
+    if (isCrashed || isPaused || isDemoMode || isMenuOpen) return;
 
     const shipZ = -shipDepth;
     const shipCenter = getTunnelCenter(shipZ, time);
@@ -991,6 +1177,9 @@ function restartGame() {
     shipOffsetY = 0;
     idleTimer = 0;
 
+    projectiles.forEach(p => p.destroy());
+    projectiles.length = 0;
+
     playerShip.group.visible = true;
     updateHUDHealth();
 
@@ -998,7 +1187,10 @@ function restartGame() {
     document.getElementById('statusVal').innerText = "SURVIVING";
     document.getElementById('statusVal').className = "status-alive";
     document.getElementById('crash-overlay').classList.add('hidden');
-    document.getElementById('demo-countdown').classList.remove('hidden');
+
+    if (!isMenuOpen) {
+        document.getElementById('demo-countdown').classList.remove('hidden');
+    }
 
     cubes.forEach((cube) => {
         const z = -(CONFIG.minDepth + Math.random() * (CONFIG.maxDepth - CONFIG.minDepth));
@@ -1020,7 +1212,7 @@ function animate(currentTime) {
     }
 
     // Demo Mode Inactivity Timer & Countdown Update
-    if (!isCrashed && !isPaused) {
+    if (!isCrashed && !isPaused && !isMenuOpen) {
         if (!isDemoMode) {
             idleTimer += dt;
             const remaining = Math.max(0, Math.ceil(DEMO_TIMEOUT - idleTimer));
@@ -1053,7 +1245,7 @@ function animate(currentTime) {
 
     const { speed, dx, dy } = handleShipInput(dt);
 
-    if (!isCrashed && !isDemoMode) {
+    if (!isCrashed && !isDemoMode && !isMenuOpen) {
         score += dt * (speed / 10);
         document.getElementById('scoreVal').innerText = Math.floor(score);
     }
@@ -1077,6 +1269,14 @@ function animate(currentTime) {
     cubes.forEach(cube => cube.update(dt, speed, time));
     particleSystem.update(dt, speed, time);
 
+    // Projectile logic for Shoot Mode
+    if (gameType === 'shoot') {
+        if (isDemoMode && Math.random() < 0.08) {
+            fireWeapon();
+        }
+        updateProjectiles(dt, time);
+    }
+
     playerShip.update(time, shipOffsetX, shipOffsetY, shipDepth, dx, dy);
     checkCollisions(time);
 
@@ -1086,7 +1286,7 @@ function animate(currentTime) {
     requestAnimationFrame(animate);
 }
 
-// Initialise settings and start loop in Demo Mode
+// Initialise configurations and start loop
 setSpeedStyle('classic');
 VirtualJoystick.setMode('joystick');
 requestAnimationFrame(animate);

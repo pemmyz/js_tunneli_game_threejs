@@ -247,7 +247,7 @@ body.mobile-mode {
     will-change: transform;
 }
 
-/* Fullscreen / Mobile Mode: 1.25X Size */
+/* Fullscreen / Mobile Mode Joystick Scaling */
 body.mobile-mode .joystick-base {
     width: 188px;
     height: 188px;
@@ -339,7 +339,7 @@ body.mobile-mode .joystick-thumb {
 
 #hud.collapsed {
     width: auto;
-    min-width: 230px;
+    min-width: 250px;
     max-width: calc(100vw - 24px);
     padding: 6px 10px;
     background: rgba(5, 5, 16, 0.82);
@@ -373,7 +373,7 @@ body.mobile-mode .joystick-thumb {
 .touch-joystick { color: #00ffff; font-weight: bold; }
 .touch-dpad { color: #ffcc00; font-weight: bold; }
 
-/* Mode Styles */
+/* Difficulty Styles */
 .mode-easy { color: #00ffcc; font-weight: bold; }
 .mode-hard { color: #ff0055; font-weight: bold; }
 
@@ -571,6 +571,143 @@ body.mobile-mode .joystick-thumb {
     color: #ffffff;
     transform: scale(0.93);
 }
+
+/* Main Menu Overlay */
+#main-menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 3500;
+    background: rgba(3, 1, 8, 0.88);
+    backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    touch-action: manipulation;
+}
+
+.menu-card {
+    background: rgba(8, 6, 22, 0.95);
+    border: 2px solid #00ffcc;
+    box-shadow: 0 0 35px rgba(0, 255, 204, 0.4), inset 0 0 30px rgba(255, 0, 127, 0.3);
+    border-radius: 10px;
+    padding: 32px 36px;
+    max-width: 520px;
+    width: 90%;
+    text-align: center;
+}
+
+.menu-title {
+    font-size: 24px;
+    color: #00ffcc;
+    text-shadow: 0 0 15px #00ffcc, 0 0 25px #ff007f;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+}
+
+.menu-subtitle {
+    font-size: 11px;
+    color: #ff007f;
+    text-shadow: 0 0 8px #ff007f;
+    letter-spacing: 2px;
+    margin-bottom: 24px;
+}
+
+.menu-options {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.menu-btn {
+    background: rgba(0, 255, 204, 0.08);
+    border: 1.5px solid #00ffcc;
+    color: #00ffcc;
+    padding: 14px 18px;
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    box-shadow: 0 0 10px rgba(0, 255, 204, 0.2);
+    transition: all 0.15s ease;
+}
+
+.menu-btn:hover, .menu-btn:active {
+    background: #00ffcc;
+    color: #030108;
+    box-shadow: 0 0 20px #00ffcc;
+    transform: translateY(-2px);
+}
+
+.menu-btn-primary {
+    border-color: #ff007f;
+    color: #ff007f;
+    box-shadow: 0 0 12px rgba(255, 0, 127, 0.3);
+}
+
+.menu-btn-primary:hover, .menu-btn-primary:active {
+    background: #ff007f;
+    color: #ffffff;
+    box-shadow: 0 0 22px #ff007f;
+}
+
+.btn-num {
+    color: #ffcc00;
+}
+
+.btn-desc {
+    font-size: 10px;
+    opacity: 0.85;
+    font-weight: normal;
+}
+
+.menu-hint {
+    font-size: 10px;
+    color: #ffcc00;
+    text-shadow: 0 0 5px #ffcc00;
+    letter-spacing: 1px;
+}
+
+/* On-Screen Mobile Shoot Button */
+.mobile-shoot-btn {
+    position: fixed;
+    right: 24px;
+    bottom: 30px;
+    z-index: 3100;
+    width: 82px;
+    height: 82px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 0, 127, 0.85) 0%, rgba(90, 0, 45, 0.9) 100%);
+    border: 2.5px solid #00ffff;
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: bold;
+    box-shadow: 0 0 25px rgba(255, 0, 127, 0.7), inset 0 0 12px #00ffff;
+    cursor: pointer;
+    user-select: none;
+    touch-action: manipulation;
+    transition: transform 0.08s ease;
+}
+
+.mobile-shoot-btn:active {
+    transform: scale(0.92);
+    background: #00ffff;
+    color: #030108;
+    box-shadow: 0 0 30px #00ffff;
+}
+
+/* Mode Indicators */
+.mode-shoot { color: #ff007f; font-weight: bold; text-shadow: 0 0 6px #ff007f; }
+.mode-dodge { color: #00ffcc; font-weight: bold; text-shadow: 0 0 6px #00ffcc; }
 
 .hidden {
     display: none !important;
